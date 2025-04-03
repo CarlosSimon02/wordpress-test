@@ -90,20 +90,39 @@ class EventController
       'template' => 'default'
     ], $atts);
 
+    // If event_id is not provided in shortcode, check URL
+    if (empty($atts['event_id']) && isset($_GET['event_id'])) {
+      $atts['event_id'] = sanitize_text_field($_GET['event_id']);
+    }
+
     if (empty($atts['event_id'])) {
-      return '<p>Error: Event ID is required</p>';
+      return '<div class="supafaya-event-error">
+                <p>No event ID was provided. Please go back to the events page and select an event.</p>
+              </div>';
     }
 
     $response = $this->event_service->getEventById($atts['event_id']);
 
     if (!$response['success']) {
-      return '<p>Error loading event: ' . esc_html($response['message'] ?? 'Unknown error') . '</p>';
+      return '<div class="supafaya-event-error">
+                <p>Error loading event: ' . esc_html($response['message'] ?? 'Unknown error') . '</p>
+              </div>';
     }
 
     $event = $response['data']['data'] ?? null;
 
     if (!$event) {
-      return '<p>Event not found</p>';
+      return '<div class="supafaya-event-error">
+                <p>Event not found</p>
+              </div>';
+    }
+
+    // Enable debug mode for admins
+    if (isset($_GET['debug']) && current_user_can('manage_options')) {
+      echo '<div style="background: #f1f1f1; padding: 10px; margin-bottom: 20px; border-left: 4px solid #0073aa;">
+              <p>Debug Mode: ON</p>
+              <p>Event ID: ' . esc_html($atts['event_id']) . '</p>
+            </div>';
     }
 
     ob_start();

@@ -12,6 +12,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define constants
+define('SUPAFAYA_VERSION', '1.0.0');
 define('SUPAFAYA_API_URL', 'http://host.docker.internal:4001/api/v1');
 define('SUPAFAYA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SUPAFAYA_PLUGIN_URL', plugin_dir_url(__FILE__));

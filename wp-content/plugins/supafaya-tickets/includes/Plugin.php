@@ -24,32 +24,64 @@ class Plugin {
         
         // Add settings
         add_action('admin_init', [$this, 'register_settings']);
-        
-        // Register page templates
-        add_filter('theme_page_templates', [$this, 'register_page_templates']);
-        add_filter('template_include', [$this, 'load_page_template']);
     }
     
     public function register_assets() {
+        // Always enqueue the stylesheet on all pages
         wp_enqueue_style(
             'supafaya-tickets-style',
             SUPAFAYA_PLUGIN_URL . 'assets/css/supafaya-tickets.css',
             [],
-            '1.0.0'
+            SUPAFAYA_VERSION
         );
         
-        wp_enqueue_script(
+        // Register the script - fixed extension from .php to .js
+        wp_register_script(
             'supafaya-tickets-script',
             SUPAFAYA_PLUGIN_URL . 'assets/js/supafaya-tickets.js',
             ['jquery'],
-            '1.0.0',
+            SUPAFAYA_VERSION,
             true
         );
         
         wp_localize_script('supafaya-tickets-script', 'supafayaTickets', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('supafaya-tickets-nonce')
+            'nonce' => wp_create_nonce('supafaya-tickets-nonce'),
+            'pluginUrl' => SUPAFAYA_PLUGIN_URL 
         ]);
+        
+        // Enqueue the script whenever the shortcode is used
+        add_action('wp_footer', [$this, 'maybe_enqueue_script']);
+    }
+    
+    /**
+     * Enqueue JavaScript if our shortcodes are used on the page
+     */
+    public function maybe_enqueue_script() {
+        global $post;
+        
+        // Check if we need to load our assets
+        $load_script = false;
+        
+        // If we have event_id in the URL
+        if (isset($_GET['event_id'])) {
+            $load_script = true;
+        }
+        
+        // Check if the content has any of our shortcodes
+        if ($post && (
+            has_shortcode($post->post_content, 'supafaya_events') || 
+            has_shortcode($post->post_content, 'supafaya_event') || 
+            has_shortcode($post->post_content, 'supafaya_ticket_checkout') || 
+            has_shortcode($post->post_content, 'supafaya_my_tickets') || 
+            has_shortcode($post->post_content, 'supafaya_login_form')
+        )) {
+            $load_script = true;
+        }
+        
+        if ($load_script) {
+            wp_enqueue_script('supafaya-tickets-script');
+        }
     }
     
     public function add_admin_menu() {
@@ -76,6 +108,7 @@ class Plugin {
     public function register_settings() {
         register_setting('supafaya_tickets_options', 'supafaya_api_url');
         register_setting('supafaya_tickets_options', 'supafaya_organization_id');
+        register_setting('supafaya_tickets_options', 'supafaya_event_page_url');
         
         add_settings_section(
             'supafaya_tickets_main',
@@ -107,42 +140,21 @@ class Plugin {
             'supafaya-tickets-settings',
             'supafaya_tickets_main'
         );
-    }
-    
-    public function render_admin_page() {
-        include SUPAFAYA_PLUGIN_DIR . 'templates/admin.php';
+        
+        add_settings_field(
+            'supafaya_event_page_url',
+            'Event Details Page URL',
+            function() {
+                $value = get_option('supafaya_event_page_url', '');
+                echo '<input type="text" name="supafaya_event_page_url" value="' . esc_attr($value) . '" class="regular-text">';
+                echo '<p class="description">Enter the full URL of your event details page. This is where users will be directed when clicking "View Details".</p>';
+            },
+            'supafaya-tickets-settings',
+            'supafaya_tickets_main'
+        );
     }
     
     public function render_settings_page() {
         include SUPAFAYA_PLUGIN_DIR . 'templates/settings.php';
-    }
-    
-    /**
-     * Register custom page templates
-     */
-    public function register_page_templates($templates) {
-        $templates[SUPAFAYA_PLUGIN_DIR . 'templates/event-page-template.php'] = 'Supafaya Event Detail';
-        return $templates;
-    }
-    
-    /**
-     * Load the custom page template when selected
-     */
-    public function load_page_template($template) {
-        global $post;
-        
-        if (!$post) {
-            return $template;
-        }
-        
-        // Event detail page using query parameter
-        if (isset($_GET['event_id']) && get_post_meta($post->ID, '_wp_page_template', true) == SUPAFAYA_PLUGIN_DIR . 'templates/event-page-template.php') {
-            $file = SUPAFAYA_PLUGIN_DIR . 'templates/event-page-template.php';
-            if (file_exists($file)) {
-                return $file;
-            }
-        }
-        
-        return $template;
     }
 }
