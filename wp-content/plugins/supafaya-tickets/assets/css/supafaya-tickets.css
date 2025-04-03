@@ -1,0 +1,620 @@
+/* General Styles */
+.supafaya-events-grid,
+.supafaya-event-single,
+.supafaya-ticket-checkout,
+.supafaya-my-tickets,
+.supafaya-login-form {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    color: #333;
+    line-height: 1.5;
+}
+
+/* Events Grid */
+/* Modern Events Grid Styles */
+.supafaya-events-grid {
+    --primary-color: #4f46e5;
+    --primary-hover: #4338ca;
+    --text-color: #374151;
+    --text-light: #6b7280;
+    --border-color: #e5e7eb;
+    --bg-color: #f9fafb;
+    --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --card-hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+.supafaya-events-grid .events-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+    margin-bottom: 40px;
+}
+
+.supafaya-events-grid .no-events-message {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 40px 20px;
+    background: var(--bg-color);
+    border-radius: 12px;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.supafaya-events-grid .no-events-message svg {
+    margin-bottom: 16px;
+    color: var(--text-light);
+}
+
+.supafaya-events-grid .no-events-message h3 {
+    font-size: 1.25rem;
+    color: var(--text-color);
+    margin-bottom: 8px;
+}
+
+.supafaya-events-grid .no-events-message p {
+    color: var(--text-light);
+    margin: 0;
+}
+
+.supafaya-events-grid .event-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.supafaya-events-grid .event-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--card-hover-shadow);
+}
+
+.supafaya-events-grid .event-image {
+    position: relative;
+    height: 180px;
+    overflow: hidden;
+}
+
+.supafaya-events-grid .event-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+.supafaya-events-grid .event-card:hover .event-image img {
+    transform: scale(1.05);
+}
+
+.supafaya-events-grid .event-date-badge {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    padding: 8px;
+    text-align: center;
+    min-width: 44px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.supafaya-events-grid .event-day {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--primary-color);
+}
+
+.supafaya-events-grid .event-month {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-light);
+    margin-top: 2px;
+}
+
+.supafaya-events-grid .event-content {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.supafaya-events-grid .event-category {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--primary-color);
+    margin-bottom: 8px;
+}
+
+.supafaya-events-grid .event-title {
+    margin: 0 0 12px;
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--text-color);
+}
+
+.supafaya-events-grid .event-title a {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.supafaya-events-grid .event-title a:hover {
+    color: var(--primary-color);
+}
+
+.supafaya-events-grid .event-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 0.875rem;
+}
+
+.supafaya-events-grid .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-light);
+}
+
+.supafaya-events-grid .meta-item svg {
+    flex-shrink: 0;
+    color: var(--text-light);
+}
+
+.supafaya-events-grid .event-description {
+    font-size: 0.9375rem;
+    color: var(--text-color);
+    line-height: 1.5;
+    margin-bottom: 20px;
+    flex-grow: 1;
+}
+
+.supafaya-events-grid .event-footer {
+    margin-top: auto;
+}
+
+.supafaya-events-grid .event-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background-color: var(--primary-color);
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.supafaya-events-grid .event-button:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.supafaya-events-grid .event-button svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.2s ease;
+}
+
+.supafaya-events-grid .event-button:hover svg {
+    transform: translateX(2px);
+}
+
+.supafaya-events-grid .load-more-container {
+    grid-column: 1 / -1;
+    text-align: center;
+    margin-top: 20px;
+}
+
+.supafaya-events-grid .load-more-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background-color: white;
+    color: var(--primary-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: var(--card-shadow);
+}
+
+.supafaya-events-grid .load-more-button:hover {
+    background-color: var(--bg-color);
+    border-color: var(--primary-color);
+    color: var(--primary-hover);
+}
+
+.supafaya-events-grid .load-more-button svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .supafaya-events-grid .events-container {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+    }
+    
+    .supafaya-events-grid .event-image {
+        height: 160px;
+    }
+}
+
+@media (max-width: 480px) {
+    .supafaya-events-grid .events-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Single Event */
+.supafaya-event-single {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.supafaya-event-single .event-header {
+    margin-bottom: 30px;
+}
+
+.supafaya-event-single .event-banner {
+    height: 300px;
+    overflow: hidden;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.supafaya-event-single .event-banner img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.supafaya-event-single .event-title {
+    font-size: 2rem;
+    margin-bottom: 15px;
+}
+
+.supafaya-event-single .event-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 10px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.supafaya-event-single .meta-label {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.supafaya-event-single .event-content {
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: 30px;
+}
+
+.supafaya-event-single .event-description,
+.supafaya-event-single .event-tickets,
+.supafaya-event-single .event-participants {
+    margin-bottom: 30px;
+}
+
+.supafaya-event-single .participants-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.supafaya-event-single .participant {
+    display: flex;
+    align-items: center;
+    padding: 5px 10px;
+    background-color: #f7f7f7;
+    border-radius: 20px;
+}
+
+.supafaya-event-single .participant-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+/* Ticket Checkout */
+.supafaya-ticket-checkout {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.supafaya-ticket-checkout .tickets-list {
+    margin-bottom: 20px;
+}
+
+.supafaya-ticket-checkout .ticket-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.supafaya-ticket-checkout .ticket-name {
+    font-size: 1.1rem;
+    margin-top: 0;
+    margin-bottom: 5px;
+}
+
+.supafaya-ticket-checkout .ticket-description {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.supafaya-ticket-checkout .ticket-price {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.supafaya-ticket-checkout .quantity-selector {
+    display: flex;
+    align-items: center;
+}
+
+.supafaya-ticket-checkout .quantity-decrease,
+.supafaya-ticket-checkout .quantity-increase {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #ddd;
+    background-color: #f7f7f7;
+    cursor: pointer;
+}
+
+.supafaya-ticket-checkout .ticket-quantity {
+    width: 40px;
+    height: 30px;
+    text-align: center;
+    border: 1px solid #ddd;
+    border-right: none;
+    border-left: none;
+}
+
+.supafaya-ticket-checkout .order-summary {
+    background-color: white;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.supafaya-ticket-checkout .summary-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.supafaya-ticket-checkout .summary-total {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-top: 10px;
+}
+
+.supafaya-ticket-checkout .checkout-button {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background-color: #0073aa;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.supafaya-ticket-checkout .checkout-button:hover:not(:disabled) {
+    background-color: #005f8b;
+}
+
+.supafaya-ticket-checkout .checkout-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* My Tickets */
+.supafaya-my-tickets .tickets-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+.supafaya-my-tickets .ticket-item {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.supafaya-my-tickets .ticket-details {
+    padding: 15px;
+}
+
+.supafaya-my-tickets .ticket-event-name {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.supafaya-my-tickets .ticket-info {
+    margin-bottom: 10px;
+}
+
+.supafaya-my-tickets .ticket-type,
+.supafaya-my-tickets .ticket-date,
+.supafaya-my-tickets .ticket-location {
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+}
+
+.supafaya-my-tickets .ticket-id {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.supafaya-my-tickets .ticket-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px;
+    background-color: #f9f9f9;
+}
+
+.supafaya-my-tickets .ticket-qr-code {
+    margin-bottom: 15px;
+}
+
+.supafaya-my-tickets .ticket-qr-code img {
+    max-width: 150px;
+}
+
+.supafaya-my-tickets .ticket-download-button {
+    padding: 8px 16px;
+    background-color: #0073aa;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.supafaya-my-tickets .ticket-download-button:hover {
+    background-color: #005f8b;
+}
+
+/* Login Form */
+.supafaya-login-form {
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+
+.supafaya-login-form h2 {
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+.supafaya-login-form .form-group {
+    margin-bottom: 15px;
+}
+
+.supafaya-login-form label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.supafaya-login-form input[type="email"],
+.supafaya-login-form input[type="password"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.supafaya-login-form .form-actions {
+    margin-top: 20px;
+}
+
+.supafaya-login-form .connect-button,
+.supafaya-login-form .disconnect-button,
+.supafaya-login-form .login-button {
+    padding: 10px 16px;
+    background-color: #0073aa;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: background-color 0.3s ease;
+}
+
+.supafaya-login-form .connect-button:hover,
+.supafaya-login-form .login-button:hover {
+    background-color: #005f8b;
+}
+
+.supafaya-login-form .disconnect-button {
+    background-color: #d63638;
+}
+
+.supafaya-login-form .disconnect-button:hover {
+    background-color: #b32d2e;
+}
+
+.supafaya-login-form .connection-status {
+    margin-bottom: 20px;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.supafaya-login-form .connection-status.connected {
+    background-color: #d1e7dd;
+    color: #0f5132;
+}
+
+/* Success and Error Messages */
+.success {
+    color: #0f5132;
+    background-color: #d1e7dd;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.error {
+    color: #842029;
+    background-color: #f8d7da;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .supafaya-event-single .event-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .supafaya-ticket-checkout .ticket-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .supafaya-ticket-checkout .ticket-actions {
+        margin-top: 10px;
+        align-self: flex-end;
+    }
+}
