@@ -1,143 +1,150 @@
 <div class="supafaya-event-single">
     <div class="event-container">
         <!-- Left Column (Sticky) -->
-        <aside class="event-sidebar">
+        <div class="event-left-column">
             <?php if (!empty($event['poster_image'])): ?>
-                <div class="event-media">
-                    <img src="<?php echo esc_url($event['poster_image']); ?>" 
-                         alt="<?php echo esc_attr($event['title']); ?>" 
-                         class="event-poster"
-                         loading="lazy">
+                <div class="event-image">
+                    <img src="<?php echo esc_url($event['poster_image']); ?>" alt="<?php echo esc_attr($event['title']); ?>" loading="lazy">
                 </div>
             <?php endif; ?>
-
-            <div class="event-info-card">
+            
+            <div class="event-info">
                 <h1 class="event-title"><?php echo esc_html($event['title']); ?></h1>
                 
                 <div class="event-meta">
                     <div class="meta-item">
-                        <svg class="meta-icon" viewBox="0 0 24 24" width="20" height="20">
-                            <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5z"/>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
                         </svg>
-                        <div class="meta-content">
-                            <span class="meta-label">Date & Time</span>
-                            <time datetime="<?php echo esc_attr($event['start_date']); ?>">
-                                <?php echo date('F j, Y', strtotime($event['start_date'])); ?>
-                            </time>
-                            <span class="meta-time">
-                                <?php echo date('g:i A', strtotime($event['start_date'])); ?> - 
-                                <?php echo date('g:i A', strtotime($event['end_date'])); ?>
-                            </span>
+                        <div>
+                            <span class="meta-label">Start Date</span>
+                            <span class="meta-value"><?php echo date('F j, Y, g:i a', strtotime($event['start_date'])); ?></span>
                         </div>
                     </div>
-
-                    <?php if (!empty($event['location'])): ?>
+                    
                     <div class="meta-item">
-                        <svg class="meta-icon" viewBox="0 0 24 24" width="20" height="20">
-                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
                         </svg>
-                        <div class="meta-content">
-                            <span class="meta-label">Location</span>
-                            <?php echo esc_html($event['location']); ?>
-                            <?php if (!empty($event['city']) || !empty($event['country'])): ?>
-                            <div class="meta-location">
-                                <?php echo esc_html(implode(', ', array_filter([$event['city'] ?? '', $event['country'] ?? '']))); ?>
+                        <div>
+                            <span class="meta-label">End Date</span>
+                            <span class="meta-value"><?php echo date('F j, Y, g:i a', strtotime($event['end_date'])); ?></span>
+                        </div>
+                    </div>
+                    
+                    <?php if (!empty($event['location'])): ?>
+                        <div class="meta-item">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <div>
+                                <span class="meta-label">Location</span>
+                                <span class="meta-value"><?php echo esc_html($event['location']); ?></span>
                             </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                
+                <?php if (!empty($event['tags']) || !empty($event['categories'])): ?>
+                    <div class="event-tags">
+                        <h3>Tags & Categories</h3>
+                        <div class="tags-container">
+                            <?php if (!empty($event['tags'])): ?>
+                                <?php foreach ($event['tags'] as $tag): ?>
+                                    <span class="tag"><?php echo esc_html($tag); ?></span>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                            
+                            <?php if (!empty($event['categories'])): ?>
+                                <?php foreach ($event['categories'] as $category): ?>
+                                    <span class="category"><?php echo esc_html($category); ?></span>
+                                <?php endforeach; ?>
                             <?php endif; ?>
                         </div>
                     </div>
-                    <?php endif; ?>
-
-                    <?php if (!empty($event['organizer_details'])): ?>
-                    <div class="meta-item">
-                        <svg class="meta-icon" viewBox="0 0 24 24" width="20" height="20">
-                            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-                        </svg>
-                        <div class="meta-content">
-                            <span class="meta-label">Organized By</span>
-                            <div class="organizer-details">
-                                <?php echo esc_html($event['organizer_details']['full_name']); ?>
-                            </div>
+                <?php endif; ?>
+                
+                <?php if (!empty($event['description'])): ?>
+                    <div class="event-description">
+                        <h3>About This Event</h3>
+                        <div class="description-content">
+                            <?php echo wpautop($event['description']); ?>
                         </div>
                     </div>
-                    <?php endif; ?>
-                </div>
-
-                <?php if (!empty($event['tags']) || !empty($event['categories'])): ?>
-                <div class="event-tags">
-                    <?php foreach (array_merge($event['tags'] ?? [], $event['categories'] ?? []) as $tag): ?>
-                        <span class="event-tag"><?php echo esc_html($tag); ?></span>
-                    <?php endforeach; ?>
-                </div>
-                <?php endif; ?>
-
-                <?php if (!empty($event['description'])): ?>
-                <div class="event-description">
-                    <h3 class="description-heading">About the Event</h3>
-                    <div class="description-content">
-                        <?php echo wpautop($event['description']); ?>
-                    </div>
-                </div>
                 <?php endif; ?>
             </div>
-        </aside>
-
-        <!-- Right Column (Main Content) -->
-        <main class="event-main">
-            <section class="ticket-section">
-                <h2 class="section-heading">Available Tickets</h2>
-                <div class="tickets-container">
-                    <?php echo do_shortcode('[supafaya_ticket_checkout event_id="' . esc_attr($event['id']) . '"]'); ?>
-                </div>
-            </section>
-
-            <?php if (!empty($event['details'])): ?>
-            <section class="event-details">
-                <h2 class="section-heading">Event Details</h2>
-                <div class="details-content">
-                    <?php echo wp_kses_post($event['details']); ?>
-                </div>
-            </section>
-            <?php endif; ?>
-
-            <section class="event-location">
-                <h2 class="section-heading">Venue Location</h2>
-                <div class="map-placeholder">
-                    <!-- Google Maps integration placeholder -->
-                    <div class="map-fallback">
-                        <svg viewBox="0 0 24 24" width="48" height="48">
-                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                        </svg>
-                        <p>Map preview for <?php echo esc_html($event['location']); ?></p>
-                    </div>
-                </div>
-            </section>
-
-            <?php if (!empty($event['participants'])): ?>
-            <section class="event-participants">
-                <h2 class="section-heading">
-                    Participants <span class="participant-count">(<?php echo esc_html($event['total_participants']); ?>)</span>
-                </h2>
-                <div class="participants-grid">
-                    <?php foreach ($event['participants'] as $participant): ?>
-                    <div class="participant-card">
-                        <?php if (!empty($participant['photo_url'])): ?>
-                        <img src="<?php echo esc_url($participant['photo_url']); ?>" 
-                             alt="<?php echo esc_attr($participant['full_name']); ?>" 
-                             class="participant-avatar"
-                             loading="lazy">
-                        <?php endif; ?>
-                        <div class="participant-info">
-                            <h3 class="participant-name"><?php echo esc_html($participant['full_name']); ?></h3>
-                            <?php if (!empty($participant['role'])): ?>
-                            <p class="participant-role"><?php echo esc_html($participant['role']); ?></p>
+        </div>
+        
+        <!-- Right Column -->
+        <div class="event-right-column">
+            <?php if (!empty($event['tickets'])): ?>
+                <div class="event-tickets">
+                    <h2>Tickets</h2>
+                    <div class="tickets-list">
+                        <?php foreach ($event['tickets'] as $ticket): ?>
+                            <?php if ($ticket['status'] === 'active'): ?>
+                                <div class="ticket-item">
+                                    <div class="ticket-info">
+                                        <h3 class="ticket-name"><?php echo esc_html($ticket['name']); ?></h3>
+                                        <?php if (!empty($ticket['description'])): ?>
+                                            <p class="ticket-description"><?php echo esc_html($ticket['description']); ?></p>
+                                        <?php endif; ?>
+                                        <div class="ticket-price">$<?php echo number_format($ticket['price'], 2); ?></div>
+                                    </div>
+                                    
+                                    <div class="ticket-actions">
+                                        <div class="quantity-selector">
+                                            <button class="quantity-decrease">-</button>
+                                            <input type="number" class="ticket-quantity" value="1" min="1" max="<?php echo esc_attr($ticket['quantity']); ?>">
+                                            <button class="quantity-increase">+</button>
+                                        </div>
+                                        <button class="add-to-cart" data-ticket-id="<?php echo esc_attr($ticket['id']); ?>">
+                                            Add to Cart
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <circle cx="9" cy="21" r="1"></circle>
+                                                <circle cx="20" cy="21" r="1"></circle>
+                                                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
                             <?php endif; ?>
+                        <?php endforeach; ?>
+                        
+                        <div class="order-summary">
+                            <div class="summary-header">
+                                <h3>Order Summary</h3>
+                                <button class="clear-cart">Clear All</button>
+                            </div>
+                            <div class="summary-items">
+                                <!-- Will be populated by JavaScript -->
+                            </div>
+                            <div class="summary-total">
+                                <span>Total:</span>
+                                <span class="total-amount">₱0.00</span>
+                            </div>
+                            <button class="checkout-button">Proceed to Checkout</button>
                         </div>
                     </div>
-                    <?php endforeach; ?>
                 </div>
-            </section>
             <?php endif; ?>
-        </main>
+            
+            <?php if (!empty($event['details'])): ?>
+                <div class="event-details">
+                    <h2>Event Details</h2>
+                    <div class="details-content">
+                        <?php echo wpautop($event['details']); ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+        </div>
     </div>
 </div>
+
