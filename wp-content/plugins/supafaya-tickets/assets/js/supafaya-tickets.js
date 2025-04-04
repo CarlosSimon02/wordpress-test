@@ -290,7 +290,7 @@
                             <span class="item-name">${ticket.name}</span>
                             <span class="item-quantity">x${ticket.quantity}</span>
                         </div>
-                        <div class="item-price">$${itemTotal.toFixed(2)}</div>
+                        <div class="item-price">₱${itemTotal.toFixed(2)}</div>
                         <button class="remove-item">×</button>
                     </div>
                 `;
@@ -308,14 +308,14 @@
                             <span class="item-name">${addon.name} (Add-on)</span>
                             <span class="item-quantity">x${addon.quantity}</span>
                         </div>
-                        <div class="item-price">$${itemTotal.toFixed(2)}</div>
+                        <div class="item-price">₱${itemTotal.toFixed(2)}</div>
                         <button class="remove-item">×</button>
                     </div>
                 `;
             }
 
             summaryContainer.html(html);
-            $('.total-amount').text(`$${total.toFixed(2)}`);
+            $('.total-amount').text(`₱${total.toFixed(2)}`);
             cart.total = total;
 
             // Show or hide checkout button based on cart contents

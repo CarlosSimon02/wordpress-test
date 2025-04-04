@@ -13,8 +13,8 @@
 /* Events Grid */
 /* Modern Events Grid Styles */
 .supafaya-events-grid {
-  --primary-color: #4f46e5;
-  --primary-hover: #4338ca;
+  --primary-color: #8800FF;
+  --primary-hover: #6f00cc;
   --text-color: #374151;
   --text-light: #6b7280;
   --border-color: #e5e7eb;
@@ -271,8 +271,8 @@
 
 /* Modern Event Single Styles */
 .supafaya-event-single {
-  --primary-color: #4f46e5;
-  --primary-hover: #4338ca;
+  --primary-color: #8800FF;
+  --primary-hover: #6f00cc;
   --text-color: #374151;
   --text-light: #6b7280;
   --border-color: #e5e7eb;
@@ -642,12 +642,17 @@
   margin: 0;
 }
 
+/* Remove focus outline */
+.supafaya-event-single .ticket-quantity:focus {
+  outline: none;
+}
+
 .supafaya-event-single .add-to-cart {
   flex-grow: 1;
   height: 36px;
-  background: var(--primary-color);
-  color: white;
-  border: none;
+  background: transparent;
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
   border-radius: 8px;
   font-weight: 500;
   font-size: 0.875rem;
@@ -656,11 +661,12 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .supafaya-event-single .add-to-cart:hover {
-  background: var(--primary-hover);
+  background: var(--primary-color);
+  color: white;
 }
 
 .supafaya-event-single .add-to-cart svg {
@@ -707,7 +713,58 @@
 .supafaya-event-single .summary-item {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-size: 0.875rem;
+  background-color: var(--bg-color);
+  padding: 10px 12px;
+  border-radius: 6px;
+  position: relative;
+}
+
+.supafaya-event-single .summary-item .item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.supafaya-event-single .summary-item .item-name {
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.supafaya-event-single .summary-item .item-quantity {
+  font-size: 0.8125rem;
+  color: var(--text-light);
+}
+
+.supafaya-event-single .summary-item .item-price {
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.supafaya-event-single .summary-item .remove-item {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  background: none;
+  border: none;
+  color: var(--text-light);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.supafaya-event-single .summary-item .remove-item:hover {
+  opacity: 1;
+  color: #e63946;
 }
 
 .supafaya-event-single .summary-total {
@@ -731,15 +788,40 @@
   font-size: 1rem;
   cursor: pointer;
   transition: background-color 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .supafaya-event-single .checkout-button:hover:not(:disabled) {
   background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.12);
 }
 
 .supafaya-event-single .checkout-button:disabled {
   background: #e5e7eb;
   cursor: not-allowed;
+}
+
+/* Addons Styling */
+.supafaya-event-single .addons-section {
+  margin-top: 24px;
+}
+
+.supafaya-event-single .section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 16px;
+  color: var(--text-color);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.supafaya-event-single .addon-item {
+  border-left: 3px solid var(--primary-color);
+}
+
+.supafaya-event-single .ticket-item-only {
+  border-left: 3px solid var(--primary-color);
 }
 
 /* My Tickets */
@@ -914,141 +996,4 @@
     margin-top: 10px;
     align-self: flex-end;
   }
-}
-
-/* Event Addons Section */
-.event-addons {
-    margin-top: 30px;
-    background-color: #fff;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    padding: 20px;
-}
-
-.event-addons h2 {
-    margin-top: 0;
-    margin-bottom: 20px;
-    font-size: 24px;
-    color: #333;
-}
-
-.addons-list {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.addon-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    background-color: #fafafa;
-    transition: all 0.2s ease;
-}
-
-.addon-item:hover {
-    border-color: #ddd;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.addon-info {
-    flex: 1;
-}
-
-.addon-title {
-    margin: 0 0 5px 0;
-    font-size: 18px;
-    color: #444;
-}
-
-.addon-description {
-    margin: 0 0 10px 0;
-    color: #666;
-    font-size: 14px;
-    line-height: 1.4;
-}
-
-.addon-price {
-    font-weight: bold;
-    color: #2a9d8f;
-    font-size: 18px;
-}
-
-.addon-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    align-items: flex-end;
-}
-
-.addon-actions .quantity-selector {
-    display: flex;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.addon-actions .quantity-selector button {
-    background-color: #f5f5f5;
-    border: none;
-    color: #555;
-    font-size: 16px;
-    width: 30px;
-    height: 30px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
-}
-
-.addon-actions .quantity-selector button:hover {
-    background-color: #eee;
-}
-
-.addon-actions .addon-quantity {
-    width: 40px;
-    border: none;
-    text-align: center;
-    font-size: 14px;
-}
-
-.addon-actions .add-addon-to-cart {
-    background-color: #2a9d8f;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 8px 12px;
-    font-size: 14px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.addon-actions .add-addon-to-cart:hover {
-    background-color: #228378;
-}
-
-.addon-actions .add-addon-to-cart svg {
-    width: 16px;
-    height: 16px;
-}
-
-@media (max-width: 768px) {
-    .addon-item {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .addon-actions {
-        width: 100%;
-        flex-direction: row;
-        justify-content: space-between;
-        margin-top: 15px;
-    }
 }

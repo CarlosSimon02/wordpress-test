@@ -95,30 +95,32 @@
                 $tickets_data = $event['ticket_types'];
             }
             
-            if ($tickets_data): 
+            if ($tickets_data || !empty($event['addons'])): 
             ?>
                 <div class="event-tickets">
                     <h2>Tickets</h2>
                     <div class="tickets-list">
-                        <?php foreach ($tickets_data as $ticket): ?>
-                            <?php 
-                            // Normalize ticket data - handle different structures
-                            $ticket_status = isset($ticket['status']) ? strtolower($ticket['status']) : 'active';
-                            $ticket_name = isset($ticket['name']) ? $ticket['name'] : (isset($ticket['title']) ? $ticket['title'] : 'Ticket');
-                            $ticket_desc = isset($ticket['description']) ? $ticket['description'] : '';
-                            $ticket_price = isset($ticket['price']) ? $ticket['price'] : 0;
-                            $ticket_id = isset($ticket['ticket_id']) ? $ticket['ticket_id'] : (isset($ticket['id']) ? $ticket['id'] : '');
-                            $ticket_quantity = isset($ticket['quantity']) ? $ticket['quantity'] : 10;
-                            
-                            if (strtolower($ticket_status) === 'active'): 
-                            ?>
-                                <div class="ticket-item">
+                        <?php 
+                        // Display Tickets
+                        if ($tickets_data):
+                            foreach ($tickets_data as $ticket): 
+                                // Normalize ticket data - handle different structures
+                                $ticket_status = isset($ticket['status']) ? strtolower($ticket['status']) : 'active';
+                                $ticket_name = isset($ticket['name']) ? $ticket['name'] : (isset($ticket['title']) ? $ticket['title'] : 'Ticket');
+                                $ticket_desc = isset($ticket['description']) ? $ticket['description'] : '';
+                                $ticket_price = isset($ticket['price']) ? $ticket['price'] : 0;
+                                $ticket_id = isset($ticket['ticket_id']) ? $ticket['ticket_id'] : (isset($ticket['id']) ? $ticket['id'] : '');
+                                $ticket_quantity = isset($ticket['quantity']) ? $ticket['quantity'] : 10;
+                                
+                                if (strtolower($ticket_status) === 'active'): 
+                        ?>
+                                <div class="ticket-item ticket-item-only">
                                     <div class="ticket-info">
                                         <h3 class="ticket-name"><?php echo esc_html($ticket_name); ?></h3>
                                         <?php if (!empty($ticket_desc)): ?>
                                             <p class="ticket-description"><?php echo esc_html($ticket_desc); ?></p>
                                         <?php endif; ?>
-                                        <div class="ticket-price">$<?php echo number_format($ticket_price, 2); ?></div>
+                                        <div class="ticket-price">₱<?php echo number_format($ticket_price, 2); ?></div>
                                     </div>
                                     
                                     <div class="ticket-actions">
@@ -137,8 +139,47 @@
                                         </button>
                                     </div>
                                 </div>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
+                            <?php 
+                                endif; 
+                            endforeach;
+                        endif; 
+                        ?>
+                        
+                        <?php 
+                        // Display Addons
+                        if (!empty($event['addons'])): 
+                        ?>
+                            <div class="addons-section">
+                                <h2>Available Add-ons</h2>
+                                <?php foreach ($event['addons'] as $addon): ?>
+                                    <div class="ticket-item addon-item">
+                                        <div class="ticket-info">
+                                            <h3 class="ticket-name"><?php echo esc_html($addon['title']); ?></h3>
+                                            <?php if (!empty($addon['description'])): ?>
+                                                <p class="ticket-description"><?php echo esc_html($addon['description']); ?></p>
+                                            <?php endif; ?>
+                                            <div class="ticket-price">₱<?php echo number_format($addon['price'], 2); ?></div>
+                                        </div>
+                                        
+                                        <div class="ticket-actions">
+                                            <div class="quantity-selector">
+                                                <button class="quantity-decrease">-</button>
+                                                <input type="number" class="ticket-quantity addon-quantity" value="1" min="1" max="10">
+                                                <button class="quantity-increase">+</button>
+                                            </div>
+                                            <button class="add-to-cart add-addon-to-cart" data-addon-id="<?php echo esc_attr($addon['id']); ?>">
+                                                Add to Cart
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <circle cx="9" cy="21" r="1"></circle>
+                                                    <circle cx="20" cy="21" r="1"></circle>
+                                                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
                         
                         <div class="order-summary">
                             <div class="summary-header">
@@ -163,41 +204,6 @@
                     <h2>Event Details</h2>
                     <div class="details-content">
                         <?php echo wpautop($event['details']); ?>
-                    </div>
-                </div>
-            <?php endif; ?>
-            
-            <?php if (!empty($event['addons'])): ?>
-                <div class="event-addons">
-                    <h2>Event Add-ons</h2>
-                    <div class="addons-list">
-                        <?php foreach ($event['addons'] as $addon): ?>
-                            <div class="addon-item">
-                                <div class="addon-info">
-                                    <h3 class="addon-title"><?php echo esc_html($addon['title']); ?></h3>
-                                    <?php if (!empty($addon['description'])): ?>
-                                        <p class="addon-description"><?php echo esc_html($addon['description']); ?></p>
-                                    <?php endif; ?>
-                                    <div class="addon-price">$<?php echo number_format($addon['price'], 2); ?></div>
-                                </div>
-                                
-                                <div class="addon-actions">
-                                    <div class="quantity-selector">
-                                        <button class="quantity-decrease">-</button>
-                                        <input type="number" class="addon-quantity" value="1" min="1" max="10">
-                                        <button class="quantity-increase">+</button>
-                                    </div>
-                                    <button class="add-addon-to-cart" data-addon-id="<?php echo esc_attr($addon['id']); ?>">
-                                        Add to Cart
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <circle cx="9" cy="21" r="1"></circle>
-                                            <circle cx="20" cy="21" r="1"></circle>
-                                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
                     </div>
                 </div>
             <?php endif; ?>
