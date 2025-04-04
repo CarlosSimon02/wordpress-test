@@ -162,15 +162,43 @@
             const ticketItem = $(this).closest('.ticket-item');
             const ticketId = $(this).data('ticket-id');
             const ticketName = ticketItem.find('.ticket-name').text();
-            const ticketPrice = parseFloat(ticketItem.find('.ticket-price').text().replace('$', '').replace(',', ''));
-            const quantity = parseInt(ticketItem.find('.ticket-quantity').val());
+            const ticketPrice = parseFloat(ticketItem.find('.ticket-price').text().replace('₱', '').replace('$', '').replace(',', ''));
+            const quantityToAdd = parseInt(ticketItem.find('.ticket-quantity').val());
 
-            cart.tickets[ticketId] = {
-                id: ticketId,
-                name: ticketName,
-                price: ticketPrice,
-                quantity: quantity
-            };
+            // Check if the ticket already exists in the cart
+            if (cart.tickets[ticketId]) {
+                // Add to the existing quantity
+                cart.tickets[ticketId].quantity += quantityToAdd;
+            } else {
+                // Create a new entry
+                cart.tickets[ticketId] = {
+                    id: ticketId,
+                    name: ticketName,
+                    price: ticketPrice,
+                    quantity: quantityToAdd
+                };
+            }
+
+            // Reset quantity input to 1
+            ticketItem.find('.ticket-quantity').val(1);
+
+            // Show visual feedback
+            const $button = $(this);
+            const originalText = $button.html();
+            $button.html('<span>Added</span> <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>');
+            
+            setTimeout(() => {
+                $button.html(originalText);
+            }, 1000);
+
+            // Show a temporary notification
+            const $notification = $('<div class="cart-notification">Added to cart</div>');
+            $('body').append($notification);
+            setTimeout(() => $notification.addClass('show'), 10);
+            setTimeout(() => {
+                $notification.removeClass('show');
+                setTimeout(() => $notification.remove(), 300);
+            }, 1500);
 
             updateOrderSummary();
         });
@@ -179,16 +207,44 @@
         $(document).on('click', '.add-addon-to-cart', function() {
             const addonItem = $(this).closest('.addon-item');
             const addonId = $(this).data('addon-id');
-            const addonName = addonItem.find('.addon-title').text();
-            const addonPrice = parseFloat(addonItem.find('.addon-price').text().replace('$', '').replace(',', ''));
-            const quantity = parseInt(addonItem.find('.addon-quantity').val());
+            const addonName = addonItem.find('.ticket-name').text();
+            const addonPrice = parseFloat(addonItem.find('.ticket-price').text().replace('₱', '').replace('$', '').replace(',', ''));
+            const quantityToAdd = parseInt(addonItem.find('.addon-quantity, .ticket-quantity').val());
 
-            cart.addons[addonId] = {
-                id: addonId,
-                name: addonName,
-                price: addonPrice,
-                quantity: quantity
-            };
+            // Check if the addon already exists in the cart
+            if (cart.addons[addonId]) {
+                // Add to the existing quantity
+                cart.addons[addonId].quantity += quantityToAdd;
+            } else {
+                // Create a new entry
+                cart.addons[addonId] = {
+                    id: addonId,
+                    name: addonName,
+                    price: addonPrice,
+                    quantity: quantityToAdd
+                };
+            }
+
+            // Reset quantity input to 1
+            addonItem.find('.addon-quantity, .ticket-quantity').val(1);
+
+            // Show visual feedback
+            const $button = $(this);
+            const originalText = $button.html();
+            $button.html('<span>Added</span> <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>');
+            
+            setTimeout(() => {
+                $button.html(originalText);
+            }, 1000);
+
+            // Show a temporary notification
+            const $notification = $('<div class="cart-notification">Added to cart</div>');
+            $('body').append($notification);
+            setTimeout(() => $notification.addClass('show'), 10);
+            setTimeout(() => {
+                $notification.removeClass('show');
+                setTimeout(() => $notification.remove(), 300);
+            }, 1500);
 
             updateOrderSummary();
         });
@@ -277,12 +333,14 @@
             const summaryContainer = $('.summary-items');
             let html = '';
             let total = 0;
+            let totalItems = 0;
 
             // Add tickets to summary
             for (const id in cart.tickets) {
                 const ticket = cart.tickets[id];
                 const itemTotal = ticket.price * ticket.quantity;
                 total += itemTotal;
+                totalItems += ticket.quantity;
 
                 html += `
                     <div class="summary-item" data-id="${id}" data-type="ticket">
@@ -291,7 +349,7 @@
                             <span class="item-quantity">x${ticket.quantity}</span>
                         </div>
                         <div class="item-price">₱${itemTotal.toFixed(2)}</div>
-                        <button class="remove-item">×</button>
+                        <button class="remove-item" title="Remove item">×</button>
                     </div>
                 `;
             }
@@ -301,6 +359,7 @@
                 const addon = cart.addons[id];
                 const itemTotal = addon.price * addon.quantity;
                 total += itemTotal;
+                totalItems += addon.quantity;
 
                 html += `
                     <div class="summary-item" data-id="${id}" data-type="addon">
@@ -309,17 +368,27 @@
                             <span class="item-quantity">x${addon.quantity}</span>
                         </div>
                         <div class="item-price">₱${itemTotal.toFixed(2)}</div>
-                        <button class="remove-item">×</button>
+                        <button class="remove-item" title="Remove item">×</button>
                     </div>
                 `;
+            }
+
+            // If cart is empty, show a message
+            if (totalItems === 0) {
+                html = '<div class="empty-cart-message">Your cart is empty</div>';
             }
 
             summaryContainer.html(html);
             $('.total-amount').text(`₱${total.toFixed(2)}`);
             cart.total = total;
 
+            // Update cart count if there's an element for it
+            if ($('.cart-count').length) {
+                $('.cart-count').text(totalItems > 0 ? totalItems : '');
+            }
+
             // Show or hide checkout button based on cart contents
-            if (Object.keys(cart.tickets).length > 0 || Object.keys(cart.addons).length > 0) {
+            if (totalItems > 0) {
                 $('.checkout-button').show();
             } else {
                 $('.checkout-button').hide();
