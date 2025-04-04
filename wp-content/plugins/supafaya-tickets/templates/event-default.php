@@ -1,3 +1,28 @@
+<?php
+// Add this at the very top of your event-default.php file
+
+// Debug section - Shows the structure of the event data
+if (isset($_GET['debug'])) {
+    echo '<div style="background: #f5f5f5; padding: 15px; margin-bottom: 20px; border: 1px solid #ddd; font-family: monospace; white-space: pre-wrap;">';
+    echo '<h3>Debug: Event Data Structure</h3>';
+    echo '<p>tickets exists: ' . (isset($event['tickets']) ? 'YES' : 'NO') . '</p>';
+    
+    // If tickets exists, show the structure
+    if (isset($event['tickets'])) {
+        echo '<p>First ticket:</p>';
+        print_r(reset($event['tickets'])); 
+    } else {
+        // Check what properties are available
+        echo '<p>Available properties:</p>';
+        print_r(array_keys($event));
+    }
+    
+    // Show the first few levels of the event data
+    echo '<p>Event data excerpt:</p>';
+    print_r(array_slice($event, 0, 5, true));
+    echo '</div>';
+}
+?>
 <div class="supafaya-event-single">
     <div class="event-container">
         <!-- Left Column (Sticky) -->
@@ -84,28 +109,48 @@
         
         <!-- Right Column -->
         <div class="event-right-column">
-            <?php if (!empty($event['tickets'])): ?>
+            <?php 
+            // More robust check for tickets - check different possible structures
+            $tickets_data = null;
+            if (!empty($event['tickets'])) {
+                $tickets_data = $event['tickets'];
+            } elseif (!empty($event['ticket_types'])) {
+                $tickets_data = $event['ticket_types'];
+            }
+            
+            if ($tickets_data): 
+            ?>
                 <div class="event-tickets">
                     <h2>Tickets</h2>
                     <div class="tickets-list">
-                        <?php foreach ($event['tickets'] as $ticket): ?>
-                            <?php if ($ticket['status'] === 'active'): ?>
+                        <?php foreach ($tickets_data as $ticket): ?>
+                            <?php 
+                            // Normalize ticket data - handle different structures
+                            $ticket_status = isset($ticket['status']) ? strtolower($ticket['status']) : 'active';
+                            $ticket_name = isset($ticket['name']) ? $ticket['name'] : (isset($ticket['title']) ? $ticket['title'] : 'Ticket');
+                            $ticket_desc = isset($ticket['description']) ? $ticket['description'] : '';
+                            $ticket_price = isset($ticket['price']) ? $ticket['price'] : 0;
+                            $ticket_id = isset($ticket['ticket_id']) ? $ticket['ticket_id'] : (isset($ticket['id']) ? $ticket['id'] : '');
+                            $ticket_quantity = isset($ticket['quantity']) ? $ticket['quantity'] : 10;
+                            
+                            if (strtolower($ticket_status) === 'active'): 
+                            ?>
                                 <div class="ticket-item">
                                     <div class="ticket-info">
-                                        <h3 class="ticket-name"><?php echo esc_html($ticket['name']); ?></h3>
-                                        <?php if (!empty($ticket['description'])): ?>
-                                            <p class="ticket-description"><?php echo esc_html($ticket['description']); ?></p>
+                                        <h3 class="ticket-name"><?php echo esc_html($ticket_name); ?></h3>
+                                        <?php if (!empty($ticket_desc)): ?>
+                                            <p class="ticket-description"><?php echo esc_html($ticket_desc); ?></p>
                                         <?php endif; ?>
-                                        <div class="ticket-price">$<?php echo number_format($ticket['price'], 2); ?></div>
+                                        <div class="ticket-price">$<?php echo number_format($ticket_price, 2); ?></div>
                                     </div>
                                     
                                     <div class="ticket-actions">
                                         <div class="quantity-selector">
                                             <button class="quantity-decrease">-</button>
-                                            <input type="number" class="ticket-quantity" value="1" min="1" max="<?php echo esc_attr($ticket['quantity']); ?>">
+                                            <input type="number" class="ticket-quantity" value="1" min="1" max="<?php echo esc_attr($ticket_quantity); ?>">
                                             <button class="quantity-increase">+</button>
                                         </div>
-                                        <button class="add-to-cart" data-ticket-id="<?php echo esc_attr($ticket['id']); ?>">
+                                        <button class="add-to-cart" data-ticket-id="<?php echo esc_attr($ticket_id); ?>">
                                             Add to Cart
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <circle cx="9" cy="21" r="1"></circle>

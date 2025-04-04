@@ -119,9 +119,9 @@ class EventController
 
     // Enable debug mode for admins
     if (isset($_GET['debug']) && current_user_can('manage_options')) {
-      echo '<div style="background: #f1f1f1; padding: 10px; margin-bottom: 20px; border-left: 4px solid #0073aa;">
-              <p>Debug Mode: ON</p>
-              <p>Event ID: ' . esc_html($atts['event_id']) . '</p>
+      echo '<div style="background: #f5f5f5; padding: 15px; margin-bottom: 20px; border: 1px solid #ddd;">
+              <h3>Debug: Event Data</h3>
+              <pre>' . print_r($event, true) . '</pre>
             </div>';
     }
 
