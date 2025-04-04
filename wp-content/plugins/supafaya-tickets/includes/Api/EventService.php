@@ -37,4 +37,11 @@ class EventService {
     public function getEventParticipants($event_id, $params = []) {
         return $this->api_client->get('/customer/events/' . $event_id . '/participants', $params);
     }
+    
+    /**
+     * Get event addons
+     */
+    public function getEventAddons($event_id) {
+        return $this->api_client->get('/events/' . $event_id . '/addons');
+    }
 }

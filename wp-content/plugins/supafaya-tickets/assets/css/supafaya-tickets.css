@@ -915,3 +915,140 @@
     align-self: flex-end;
   }
 }
+
+/* Event Addons Section */
+.event-addons {
+    margin-top: 30px;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    padding: 20px;
+}
+
+.event-addons h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 24px;
+    color: #333;
+}
+
+.addons-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.addon-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    background-color: #fafafa;
+    transition: all 0.2s ease;
+}
+
+.addon-item:hover {
+    border-color: #ddd;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.addon-info {
+    flex: 1;
+}
+
+.addon-title {
+    margin: 0 0 5px 0;
+    font-size: 18px;
+    color: #444;
+}
+
+.addon-description {
+    margin: 0 0 10px 0;
+    color: #666;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.addon-price {
+    font-weight: bold;
+    color: #2a9d8f;
+    font-size: 18px;
+}
+
+.addon-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.addon-actions .quantity-selector {
+    display: flex;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.addon-actions .quantity-selector button {
+    background-color: #f5f5f5;
+    border: none;
+    color: #555;
+    font-size: 16px;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.addon-actions .quantity-selector button:hover {
+    background-color: #eee;
+}
+
+.addon-actions .addon-quantity {
+    width: 40px;
+    border: none;
+    text-align: center;
+    font-size: 14px;
+}
+
+.addon-actions .add-addon-to-cart {
+    background-color: #2a9d8f;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.addon-actions .add-addon-to-cart:hover {
+    background-color: #228378;
+}
+
+.addon-actions .add-addon-to-cart svg {
+    width: 16px;
+    height: 16px;
+}
+
+@media (max-width: 768px) {
+    .addon-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .addon-actions {
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-between;
+        margin-top: 15px;
+    }
+}

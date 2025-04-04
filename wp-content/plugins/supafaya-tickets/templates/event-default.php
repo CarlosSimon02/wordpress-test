@@ -1,27 +1,4 @@
 <?php
-// Add this at the very top of your event-default.php file
-
-// Debug section - Shows the structure of the event data
-if (isset($_GET['debug'])) {
-    echo '<div style="background: #f5f5f5; padding: 15px; margin-bottom: 20px; border: 1px solid #ddd; font-family: monospace; white-space: pre-wrap;">';
-    echo '<h3>Debug: Event Data Structure</h3>';
-    echo '<p>tickets exists: ' . (isset($event['tickets']) ? 'YES' : 'NO') . '</p>';
-    
-    // If tickets exists, show the structure
-    if (isset($event['tickets'])) {
-        echo '<p>First ticket:</p>';
-        print_r(reset($event['tickets'])); 
-    } else {
-        // Check what properties are available
-        echo '<p>Available properties:</p>';
-        print_r(array_keys($event));
-    }
-    
-    // Show the first few levels of the event data
-    echo '<p>Event data excerpt:</p>';
-    print_r(array_slice($event, 0, 5, true));
-    echo '</div>';
-}
 ?>
 <div class="supafaya-event-single">
     <div class="event-container">
@@ -186,6 +163,41 @@ if (isset($_GET['debug'])) {
                     <h2>Event Details</h2>
                     <div class="details-content">
                         <?php echo wpautop($event['details']); ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+            
+            <?php if (!empty($event['addons'])): ?>
+                <div class="event-addons">
+                    <h2>Event Add-ons</h2>
+                    <div class="addons-list">
+                        <?php foreach ($event['addons'] as $addon): ?>
+                            <div class="addon-item">
+                                <div class="addon-info">
+                                    <h3 class="addon-title"><?php echo esc_html($addon['title']); ?></h3>
+                                    <?php if (!empty($addon['description'])): ?>
+                                        <p class="addon-description"><?php echo esc_html($addon['description']); ?></p>
+                                    <?php endif; ?>
+                                    <div class="addon-price">$<?php echo number_format($addon['price'], 2); ?></div>
+                                </div>
+                                
+                                <div class="addon-actions">
+                                    <div class="quantity-selector">
+                                        <button class="quantity-decrease">-</button>
+                                        <input type="number" class="addon-quantity" value="1" min="1" max="10">
+                                        <button class="quantity-increase">+</button>
+                                    </div>
+                                    <button class="add-addon-to-cart" data-addon-id="<?php echo esc_attr($addon['id']); ?>">
+                                        Add to Cart
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="9" cy="21" r="1"></circle>
+                                            <circle cx="20" cy="21" r="1"></circle>
+                                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
                 </div>
             <?php endif; ?>

@@ -127,11 +127,20 @@ class TicketController
       return;
     }
 
-    $event_id = sanitize_text_field($_POST['event_id'] ?? '');
-    $ticket_id = sanitize_text_field($_POST['ticket_id'] ?? '');
-    $quantity = intval($_POST['quantity'] ?? 1);
+    // Verify nonce for security
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'supafaya_ticket_nonce')) {
+      wp_send_json([
+        'success' => false,
+        'message' => 'Security verification failed'
+      ]);
+      return;
+    }
 
-    if (empty($event_id) || empty($ticket_id)) {
+    $event_id = sanitize_text_field($_POST['event_id'] ?? '');
+    $tickets = isset($_POST['tickets']) ? $_POST['tickets'] : [];
+    $addons = isset($_POST['addons']) ? $_POST['addons'] : [];
+
+    if (empty($event_id) || empty($tickets)) {
       wp_send_json([
         'success' => false,
         'message' => 'Missing required fields'
@@ -139,12 +148,39 @@ class TicketController
       return;
     }
 
+    // Sanitize tickets and addons data
+    $sanitized_tickets = [];
+    foreach ($tickets as $ticket) {
+      if (isset($ticket['ticket_id']) && isset($ticket['quantity'])) {
+        $sanitized_tickets[] = [
+          'ticket_id' => sanitize_text_field($ticket['ticket_id']),
+          'quantity' => intval($ticket['quantity'])
+        ];
+      }
+    }
+
+    $sanitized_addons = [];
+    foreach ($addons as $addon) {
+      if (isset($addon['addon_id']) && isset($addon['quantity'])) {
+        $sanitized_addons[] = [
+          'addon_id' => sanitize_text_field($addon['addon_id']),
+          'quantity' => intval($addon['quantity'])
+        ];
+      }
+    }
+
+    // Prepare the complete ticket data
     $ticket_data = [
       'event_id' => $event_id,
-      'ticket_id' => $ticket_id,
-      'quantity' => $quantity
+      'tickets' => $sanitized_tickets
     ];
 
+    // Add addons if present
+    if (!empty($sanitized_addons)) {
+      $ticket_data['addons'] = $sanitized_addons;
+    }
+
+    // Call the ticket service to purchase ticket
     $response = $this->ticket_service->purchaseTicket($ticket_data);
 
     wp_send_json($response);

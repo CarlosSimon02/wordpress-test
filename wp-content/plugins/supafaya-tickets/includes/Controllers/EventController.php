@@ -116,13 +116,11 @@ class EventController
                 <p>Event not found</p>
               </div>';
     }
-
-    // Enable debug mode for admins
-    if (isset($_GET['debug']) && current_user_can('manage_options')) {
-      echo '<div style="background: #f5f5f5; padding: 15px; margin-bottom: 20px; border: 1px solid #ddd;">
-              <h3>Debug: Event Data</h3>
-              <pre>' . print_r($event, true) . '</pre>
-            </div>';
+    
+    // Fetch event addons
+    $addons_response = $this->event_service->getEventAddons($atts['event_id']);
+    if ($addons_response['success']) {
+      $event['addons'] = $addons_response['data']['data'] ?? [];
     }
 
     ob_start();

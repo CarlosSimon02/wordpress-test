@@ -112,126 +112,237 @@
     
     // Ticket checkout
     function initTicketCheckout() {
-        const $form = $('#supafaya-ticket-form');
-        
-        if (!$form.length) return;
-        
-        const $summaryItems = $form.find('.summary-items');
-        const $totalAmount = $form.find('.total-amount');
-        const $checkoutButton = $form.find('.checkout-button');
-        const eventId = $form.data('event-id');
-        
-        // Quantity selector
-        $form.on('click', '.quantity-decrease, .quantity-increase', function() {
-            const $button = $(this);
-            const $input = $button.closest('.quantity-selector').find('.ticket-quantity');
-            let value = parseInt($input.val());
-            
-            if ($button.hasClass('quantity-decrease')) {
-                value = Math.max(0, value - 1);
-            } else {
-                value = Math.min(parseInt($input.attr('max')), value + 1);
+        const eventPage = $('.supafaya-event-single');
+        if (eventPage.length === 0) return;
+
+        const cart = {
+            tickets: {},
+            addons: {},
+            total: 0
+        };
+
+        // Handle ticket quantity changes
+        $(document).on('click', '.ticket-item .quantity-decrease', function() {
+            const input = $(this).siblings('.ticket-quantity');
+            const currentVal = parseInt(input.val());
+            if (currentVal > 1) {
+                input.val(currentVal - 1);
             }
-            
-            $input.val(value).trigger('change');
         });
-        
-        // Update summary on quantity change
-        $form.on('change', '.ticket-quantity', function() {
+
+        $(document).on('click', '.ticket-item .quantity-increase', function() {
+            const input = $(this).siblings('.ticket-quantity');
+            const currentVal = parseInt(input.val());
+            const max = parseInt(input.attr('max') || 10);
+            if (currentVal < max) {
+                input.val(currentVal + 1);
+            }
+        });
+
+        // Handle addon quantity changes
+        $(document).on('click', '.addon-item .quantity-decrease', function() {
+            const input = $(this).siblings('.addon-quantity');
+            const currentVal = parseInt(input.val());
+            if (currentVal > 1) {
+                input.val(currentVal - 1);
+            }
+        });
+
+        $(document).on('click', '.addon-item .quantity-increase', function() {
+            const input = $(this).siblings('.addon-quantity');
+            const currentVal = parseInt(input.val());
+            const max = parseInt(input.attr('max') || 10);
+            if (currentVal < max) {
+                input.val(currentVal + 1);
+            }
+        });
+
+        // Add ticket to cart
+        $(document).on('click', '.add-to-cart', function() {
+            const ticketItem = $(this).closest('.ticket-item');
+            const ticketId = $(this).data('ticket-id');
+            const ticketName = ticketItem.find('.ticket-name').text();
+            const ticketPrice = parseFloat(ticketItem.find('.ticket-price').text().replace('$', '').replace(',', ''));
+            const quantity = parseInt(ticketItem.find('.ticket-quantity').val());
+
+            cart.tickets[ticketId] = {
+                id: ticketId,
+                name: ticketName,
+                price: ticketPrice,
+                quantity: quantity
+            };
+
             updateOrderSummary();
         });
-        
-        function updateOrderSummary() {
-            let total = 0;
-            let hasItems = false;
-            
-            $summaryItems.empty();
-            
-            $form.find('.ticket-item').each(function() {
-                const $item = $(this);
-                const ticketId = $item.data('ticket-id');
-                const ticketName = $item.find('.ticket-name').text();
-                const ticketPrice = parseFloat($item.find('.ticket-price').text());
-                const $quantity = $item.find('.ticket-quantity');
-                const quantity = parseInt($quantity.val());
-                
-                if (quantity > 0) {
-                    hasItems = true;
-                    const itemTotal = ticketPrice * quantity;
-                    total += itemTotal;
-                    
-                    $summaryItems.append(`
-                        <div class="summary-item" data-ticket-id="${ticketId}">
-                            <div class="item-name">${ticketName} x ${quantity}</div>
-                            <div class="item-price">${itemTotal.toFixed(2)}</div>
-                        </div>
-                    `);
-                }
-            });
-            
-            $totalAmount.text(total.toFixed(2));
-            $checkoutButton.prop('disabled', !hasItems);
-        }
-        
-        // Handle form submission
-        $form.on('submit', function(e) {
-            e.preventDefault();
-            
-            const $result = $('#checkout-result');
-            $result.hide();
-            
+
+        // Add addon to cart
+        $(document).on('click', '.add-addon-to-cart', function() {
+            const addonItem = $(this).closest('.addon-item');
+            const addonId = $(this).data('addon-id');
+            const addonName = addonItem.find('.addon-title').text();
+            const addonPrice = parseFloat(addonItem.find('.addon-price').text().replace('$', '').replace(',', ''));
+            const quantity = parseInt(addonItem.find('.addon-quantity').val());
+
+            cart.addons[addonId] = {
+                id: addonId,
+                name: addonName,
+                price: addonPrice,
+                quantity: quantity
+            };
+
+            updateOrderSummary();
+        });
+
+        // Clear cart
+        $(document).on('click', '.clear-cart', function() {
+            cart.tickets = {};
+            cart.addons = {};
+            cart.total = 0;
+            updateOrderSummary();
+        });
+
+        // Process checkout
+        $(document).on('click', '.checkout-button', function() {
+            // Prepare ticket data
             const tickets = [];
-            
-            $form.find('.summary-item').each(function() {
-                const $item = $(this);
-                const ticketId = $item.data('ticket-id');
-                const quantity = parseInt($item.find('.item-name').text().split(' x ')[1]);
-                
+            const addons = [];
+
+            // Format tickets for API
+            for (const id in cart.tickets) {
                 tickets.push({
-                    ticket_id: ticketId,
-                    quantity: quantity
+                    ticket_id: id,
+                    quantity: cart.tickets[id].quantity
                 });
-            });
-            
-            if (tickets.length === 0) {
-                $result.html('<p class="error">Please select at least one ticket</p>').show();
+            }
+
+            // Format addons for API
+            for (const id in cart.addons) {
+                addons.push({
+                    addon_id: id,
+                    quantity: cart.addons[id].quantity
+                });
+            }
+
+            // Get event ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const eventId = urlParams.get('event_id');
+
+            if (!eventId) {
+                alert('Event ID not found in URL');
                 return;
             }
-            
-            $checkoutButton.prop('disabled', true).text('Processing...');
-            
+
+            // Disable checkout button
+            $(this).prop('disabled', true).text('Processing...');
+
+            // Send AJAX request
             $.ajax({
                 url: supafayaTickets.ajaxUrl,
                 type: 'POST',
                 data: {
                     action: 'supafaya_purchase_ticket',
+                    nonce: supafayaTickets.nonce,
                     event_id: eventId,
                     tickets: tickets,
-                    nonce: supafayaTickets.nonce
+                    addons: addons
                 },
                 success: function(response) {
-                    $checkoutButton.prop('disabled', false).text('Proceed to Checkout');
-                    
+                    // Re-enable checkout button
+                    $('.checkout-button').prop('disabled', false).text('Proceed to Checkout');
+
                     if (response.success) {
-                        $form.hide();
-                        $result.html(`
+                        // Show success message
+                        $('.event-right-column').html(`
                             <div class="checkout-success">
                                 <h3>Thank you for your purchase!</h3>
                                 <p>${response.message || 'Your tickets have been booked successfully.'}</p>
                                 <p>Reference: ${response.data?.reference_id || ''}</p>
                                 <p><a href="/my-tickets" class="view-tickets-button">View My Tickets</a></p>
                             </div>
-                        `).show();
+                        `);
                     } else {
-                        $result.html(`<p class="error">${response.message || 'An error occurred'}</p>`).show();
+                        // Show error message
+                        alert('Error: ' + (response.message || 'An error occurred'));
                     }
                 },
                 error: function() {
-                    $checkoutButton.prop('disabled', false).text('Proceed to Checkout');
-                    $result.html('<p class="error">A network error occurred. Please try again.</p>').show();
+                    // Re-enable checkout button
+                    $('.checkout-button').prop('disabled', false).text('Proceed to Checkout');
+                    alert('A network error occurred. Please try again.');
                 }
             });
         });
+
+        function updateOrderSummary() {
+            const summaryContainer = $('.summary-items');
+            let html = '';
+            let total = 0;
+
+            // Add tickets to summary
+            for (const id in cart.tickets) {
+                const ticket = cart.tickets[id];
+                const itemTotal = ticket.price * ticket.quantity;
+                total += itemTotal;
+
+                html += `
+                    <div class="summary-item" data-id="${id}" data-type="ticket">
+                        <div class="item-info">
+                            <span class="item-name">${ticket.name}</span>
+                            <span class="item-quantity">x${ticket.quantity}</span>
+                        </div>
+                        <div class="item-price">$${itemTotal.toFixed(2)}</div>
+                        <button class="remove-item">×</button>
+                    </div>
+                `;
+            }
+
+            // Add addons to summary
+            for (const id in cart.addons) {
+                const addon = cart.addons[id];
+                const itemTotal = addon.price * addon.quantity;
+                total += itemTotal;
+
+                html += `
+                    <div class="summary-item" data-id="${id}" data-type="addon">
+                        <div class="item-info">
+                            <span class="item-name">${addon.name} (Add-on)</span>
+                            <span class="item-quantity">x${addon.quantity}</span>
+                        </div>
+                        <div class="item-price">$${itemTotal.toFixed(2)}</div>
+                        <button class="remove-item">×</button>
+                    </div>
+                `;
+            }
+
+            summaryContainer.html(html);
+            $('.total-amount').text(`$${total.toFixed(2)}`);
+            cart.total = total;
+
+            // Show or hide checkout button based on cart contents
+            if (Object.keys(cart.tickets).length > 0 || Object.keys(cart.addons).length > 0) {
+                $('.checkout-button').show();
+            } else {
+                $('.checkout-button').hide();
+            }
+        }
+
+        // Remove items from cart
+        $(document).on('click', '.remove-item', function() {
+            const item = $(this).closest('.summary-item');
+            const id = item.data('id');
+            const type = item.data('type');
+            
+            if (type === 'ticket') {
+                delete cart.tickets[id];
+            } else if (type === 'addon') {
+                delete cart.addons[id];
+            }
+            
+            updateOrderSummary();
+        });
+
+        // Initialize with empty cart
+        updateOrderSummary();
     }
     
     // Admin settings page
