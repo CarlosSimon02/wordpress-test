@@ -158,12 +158,12 @@
         });
 
         // Add ticket to cart
-        $(document).on('click', '.add-to-cart', function() {
+        $(document).on('click', '.add-to-cart:not(.add-addon-to-cart)', function() {
             const ticketItem = $(this).closest('.ticket-item');
             const ticketId = $(this).data('ticket-id');
             const ticketName = ticketItem.find('.ticket-name').text();
             const ticketPrice = parseFloat(ticketItem.find('.ticket-price').text().replace('₱', '').replace('$', '').replace(',', ''));
-            const quantityToAdd = parseInt(ticketItem.find('.ticket-quantity').val());
+            const quantityToAdd = parseInt(ticketItem.find('.ticket-quantity').val() || 1);
 
             // Check if the ticket already exists in the cart
             if (cart.tickets[ticketId]) {
@@ -184,11 +184,17 @@
 
             // Show visual feedback
             const $button = $(this);
-            const originalText = $button.html();
+            
+            // Store original text in data attribute to ensure we can restore it correctly
+            if (!$button.data('original-text')) {
+                $button.data('original-text', $button.html());
+            }
+            
             $button.html('<span>Added</span> <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>');
             
             setTimeout(() => {
-                $button.html(originalText);
+                // Use the stored original text
+                $button.html($button.data('original-text'));
             }, 1000);
 
             // Show a temporary notification
@@ -209,7 +215,7 @@
             const addonId = $(this).data('addon-id');
             const addonName = addonItem.find('.ticket-name').text();
             const addonPrice = parseFloat(addonItem.find('.ticket-price').text().replace('₱', '').replace('$', '').replace(',', ''));
-            const quantityToAdd = parseInt(addonItem.find('.addon-quantity, .ticket-quantity').val());
+            const quantityToAdd = parseInt(addonItem.find('.addon-quantity, .ticket-quantity').val() || 1);
 
             // Check if the addon already exists in the cart
             if (cart.addons[addonId]) {
@@ -231,10 +237,17 @@
             // Show visual feedback
             const $button = $(this);
             const originalText = $button.html();
+            
+            // Store original text in data attribute to ensure we can restore it correctly
+            if (!$button.data('original-text')) {
+                $button.data('original-text', originalText);
+            }
+            
             $button.html('<span>Added</span> <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>');
             
             setTimeout(() => {
-                $button.html(originalText);
+                // Use the stored original text
+                $button.html($button.data('original-text'));
             }, 1000);
 
             // Show a temporary notification
