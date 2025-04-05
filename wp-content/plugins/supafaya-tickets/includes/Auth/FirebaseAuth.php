@@ -10,7 +10,6 @@ use SupafayaTickets\Api\ApiClient;
 class FirebaseAuth {
     private $auth_service;
     private $api_client;
-    private $user_meta_prefix = 'supafaya_firebase_';
     
     public function __construct() {
         $this->api_client = new ApiClient();
@@ -20,72 +19,45 @@ class FirebaseAuth {
         add_action('wp_ajax_supafaya_firebase_auth', [$this, 'handle_firebase_auth']);
         add_action('wp_ajax_nopriv_supafaya_firebase_auth', [$this, 'handle_firebase_auth']);
         
-        // Add shortcode for login form
+        // Add shortcode for login/logout forms
         add_shortcode('supafaya_firebase_login', [$this, 'firebase_login_shortcode']);
         add_shortcode('supafaya_firebase_logout', [$this, 'firebase_logout_shortcode']);
         
         // Enqueue Firebase scripts
         add_action('wp_enqueue_scripts', [$this, 'enqueue_firebase_scripts']);
         
-        // Add filter for API token
-        add_filter('supafaya_api_token', [$this, 'get_firebase_user_token']);
-        
-        // Override determine_current_user but ONLY on the frontend, not in admin
-        if (!is_admin()) {
-            add_filter('determine_current_user', [$this, 'authenticate_firebase_user'], 20);
+        // Handle admin AJAX requests with Firebase token
+        add_action('admin_init', [$this, 'setup_admin_ajax']);
+    }
+    
+    /**
+     * Setup authentication for admin AJAX requests
+     */
+    public function setup_admin_ajax() {
+        // Only apply this for AJAX requests
+        if (defined('DOING_AJAX') && DOING_AJAX) {
+            add_filter('supafaya_api_token', [$this, 'get_firebase_token_from_request']);
         }
     }
     
     /**
-     * Authenticate user based on Firebase cookie
+     * Get Firebase token from AJAX request
      */
-    public function authenticate_firebase_user($user_id) {
-        // If already authenticated, don't override
-        if ($user_id && $user_id > 0) {
-            return $user_id;
+    public function get_firebase_token_from_request() {
+        // Get token from request header
+        $headers = getallheaders();
+        if (isset($headers['X-Firebase-Token'])) {
+            return $headers['X-Firebase-Token'];
         }
         
-        // Check for Firebase cookie
+        // Get token from POST data
+        if (isset($_POST['firebase_token'])) {
+            return sanitize_text_field($_POST['firebase_token']);
+        }
+        
+        // Get token from cookie
         if (isset($_COOKIE['firebase_user_token'])) {
-            $token = sanitize_text_field($_COOKIE['firebase_user_token']);
-            
-            // Find user by token in user meta
-            $users = get_users([
-                'meta_key' => $this->user_meta_prefix . 'current_token',
-                'meta_value' => $token,
-                'number' => 1,
-                'count_total' => false
-            ]);
-            
-            if (!empty($users)) {
-                return $users[0]->ID;
-            }
-        }
-        
-        return $user_id;
-    }
-    
-    /**
-     * Get token for current Firebase user
-     */
-    public function get_firebase_user_token() {
-        $user = wp_get_current_user();
-        
-        if ($user->ID > 0) {
-            $token_data = get_user_meta($user->ID, $this->user_meta_prefix . 'token_data', true);
-            
-            if ($token_data) {
-                $validated_token = $this->auth_service->validateToken($token_data);
-                
-                if ($validated_token) {
-                    // Update if token was refreshed
-                    if ($validated_token !== $token_data) {
-                        update_user_meta($user->ID, $this->user_meta_prefix . 'token_data', $validated_token);
-                    }
-                    
-                    return $validated_token['access_token'];
-                }
-            }
+            return sanitize_text_field($_COOKIE['firebase_user_token']);
         }
         
         return null;
@@ -106,7 +78,10 @@ class FirebaseAuth {
     public function enqueue_firebase_scripts() {
         // Only enqueue on pages with our shortcode
         global $post;
-        if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'supafaya_firebase_login')) {
+        if (is_a($post, 'WP_Post') && 
+           (has_shortcode($post->post_content, 'supafaya_firebase_login') || 
+            has_shortcode($post->post_content, 'supafaya_firebase_logout'))) {
+            
             // Firebase core
             wp_enqueue_script(
                 'firebase-app',
@@ -158,8 +133,8 @@ class FirebaseAuth {
                 'projectId' => get_option('supafaya_firebase_project_id', ''),
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('supafaya-firebase-nonce'),
-                'isLoggedIn' => is_user_logged_in(),
-                'redirectUrl' => $this->get_redirect_url()
+                'redirectUrl' => $this->get_redirect_url(),
+                'siteUrl' => site_url()
             ]);
         }
     }
@@ -233,77 +208,44 @@ class FirebaseAuth {
             exit;
         }
         
-        // Find or create a WordPress user
-        $user_id = $this->get_or_create_user($user_data);
-        
-        if (is_wp_error($user_id)) {
-            wp_send_json_error($user_id->get_error_message());
-            exit;
-        }
-        
-        // Store Supafaya tokens in user meta
-        update_user_meta($user_id, $this->user_meta_prefix . 'token_data', $api_response);
-        
-        // Store Firebase UID and current token for lookup
-        update_user_meta($user_id, $this->user_meta_prefix . 'uid', $user_data['uid']);
-        update_user_meta($user_id, $this->user_meta_prefix . 'current_token', $token);
-        
-        // Set cookie for client-side authentication
-        $secure = is_ssl();
-        $httponly = true;
-        setcookie('firebase_user_token', $token, time() + DAY_IN_SECONDS, COOKIEPATH, COOKIE_DOMAIN, $secure, $httponly);
-        
-        // Log the user in by setting auth cookie
-        wp_set_auth_cookie($user_id, true);
+        // Store API tokens in cookie (encrypted)
+        $this->store_api_token_in_cookie($api_response);
         
         wp_send_json_success([
             'message' => 'Authentication successful',
+            'user' => [
+                'email' => $user_data['email'],
+                'name' => $user_data['displayName'],
+                'photo' => $user_data['photoURL']
+            ],
             'redirect' => $this->get_redirect_url()
         ]);
     }
     
     /**
-     * Get existing user or create a new one
+     * Store API token in a secure cookie
      */
-    private function get_or_create_user($user_data) {
-        // Check if user with this Firebase UID already exists
-        $existing_users = get_users([
-            'meta_key' => 'supafaya_firebase_uid',
-            'meta_value' => $user_data['uid'],
-            'number' => 1,
-            'count_total' => false
-        ]);
+    private function store_api_token_in_cookie($token_data) {
+        // Calculate expiry time
+        $expires = isset($token_data['expires_in']) ? time() + $token_data['expires_in'] : time() + DAY_IN_SECONDS;
         
-        if (!empty($existing_users)) {
-            return $existing_users[0]->ID;
-        }
+        // Store expiry time in token data
+        $token_data['expires_at'] = $expires;
         
-        // Check if user with this email exists
-        $user = get_user_by('email', $user_data['email']);
+        // Encrypt token data for security
+        $encrypted = $this->encrypt_data(json_encode($token_data));
         
-        if ($user) {
-            // Add Firebase UID to existing user
-            update_user_meta($user->ID, 'supafaya_firebase_uid', $user_data['uid']);
-            return $user->ID;
-        }
-        
-        // Create a new user
-        $username = 'user_' . time();
-        $password = wp_generate_password();
-        $user_id = wp_create_user($username, $password, $user_data['email']);
-        
-        if (is_wp_error($user_id)) {
-            return $user_id;
-        }
-        
-        // Update user display name if available
-        if (!empty($user_data['displayName'])) {
-            wp_update_user([
-                'ID' => $user_id,
-                'display_name' => $user_data['displayName']
-            ]);
-        }
-        
-        return $user_id;
+        // Set secure cookie with token data
+        $secure = is_ssl();
+        $httponly = true;
+        setcookie('supafaya_api_token', $encrypted, $expires, COOKIEPATH, COOKIE_DOMAIN, $secure, $httponly);
+    }
+    
+    /**
+     * Simple encryption function
+     */
+    private function encrypt_data($data) {
+        $key = AUTH_KEY ?? 'supafaya-secure-key';
+        return base64_encode(openssl_encrypt($data, 'AES-256-CBC', $key, 0, substr($key, 0, 16)));
     }
 } 

@@ -4,6 +4,9 @@
 (function($) {
     'use strict';
 
+    // Global reference to the current user
+    let currentUser = null;
+
     // Initialize Firebase with the configuration passed from WordPress
     const firebaseConfig = {
         apiKey: supafayaFirebase.apiKey,
@@ -62,41 +65,97 @@
 
     // Wait for document ready
     $(document).ready(function() {
-        // Start the FirebaseUI Auth
-        ui.start('#firebaseui-auth-container', uiConfig);
-
-        // Listen for auth state changes
-        auth.onAuthStateChanged(function(user) {
-            if (user && !supafayaFirebase.isLoggedIn) {
-                // User is signed in with Firebase but not with WordPress
-                // handleSignIn will be called by the UI callback
-            }
-        });
-
-        // Get redirect_to parameter from URL if present
+        // Check URL for redirect_to parameter
         const urlParams = new URLSearchParams(window.location.search);
         const redirectTo = urlParams.get('redirect_to');
         if (redirectTo) {
-            // Store the admin redirect in a variable to use later
-            supafayaFirebase.adminRedirectUrl = redirectTo;
+            // Store the redirect URL for later
+            localStorage.setItem('supafaya_redirect', redirectTo);
         }
 
-        // Add this inside the document ready function:
+        // Check if we're on the login page
+        if ($('#firebaseui-auth-container').length > 0) {
+            // Start the FirebaseUI Auth
+            ui.start('#firebaseui-auth-container', uiConfig);
+        }
+
+        // Listen for auth state changes
+        auth.onAuthStateChanged(function(user) {
+            if (user) {
+                // User is signed in
+                currentUser = user;
+                
+                // Update UI for logged-in state
+                $('.supafaya-firebase-user-info').html(`
+                    <div class="user-details">
+                        ${user.photoURL ? `<img src="${user.photoURL}" class="user-avatar" />` : ''}
+                        <span class="user-name">${user.displayName || user.email}</span>
+                    </div>
+                `);
+                
+                // Show logout container if present
+                $('.supafaya-logout-container').show();
+                
+                // Store token in a cookie for server-side access
+                updateFirebaseToken(user);
+                
+                // Add token to all AJAX requests
+                setupAjaxTokenInterceptor(user);
+            } else {
+                // User is signed out
+                currentUser = null;
+                
+                // Clear cookie
+                document.cookie = 'firebase_user_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+                
+                // Update UI for logged-out state
+                $('.supafaya-firebase-user-info').html('');
+                
+                // Hide logout container if present
+                $('.supafaya-logout-container').hide();
+            }
+        });
+
+        // Handle logout button
         $('.firebase-logout-button').on('click', function(e) {
             e.preventDefault();
             
             // Sign out from Firebase
-            firebase.auth().signOut().then(function() {
-                // Remove the cookie
+            auth.signOut().then(function() {
+                // Clear cookies
                 document.cookie = 'firebase_user_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+                document.cookie = 'supafaya_api_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
                 
-                // Redirect to logout URL in WordPress
-                window.location.href = wordpress_url + '/wp-login.php?action=logout&_wpnonce=' + wp_logout_nonce;
+                // Redirect to home
+                window.location.href = supafayaFirebase.siteUrl;
             }).catch(function(error) {
                 console.error('Sign Out Error', error);
             });
         });
     });
+
+    // Setup AJAX interceptor to include Firebase token in all requests
+    function setupAjaxTokenInterceptor(user) {
+        $.ajaxSetup({
+            beforeSend: function(xhr) {
+                user.getIdToken(true).then(function(token) {
+                    xhr.setRequestHeader('X-Firebase-Token', token);
+                }).catch(function(error) {
+                    console.error('Error getting Firebase token', error);
+                });
+            }
+        });
+    }
+    
+    // Update Firebase token in cookie
+    function updateFirebaseToken(user) {
+        user.getIdToken(true).then(function(token) {
+            // Store in cookie for server-side
+            setCookie('firebase_user_token', token, 1);
+        }).catch(function(error) {
+            console.error('Error getting token', error);
+        });
+    }
 
     // Handle user sign in - authenticate with WordPress backend
     function handleSignIn(user) {
@@ -106,6 +165,9 @@
 
         // Get ID token
         user.getIdToken(true).then(function(idToken) {
+            // Store token in cookie for server-side authentication
+            setCookie('firebase_user_token', idToken, 1);
+            
             // Send the token to the server
             $.ajax({
                 url: supafayaFirebase.ajaxUrl,
@@ -124,13 +186,17 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Check if we have an admin redirect URL
-                        if (supafayaFirebase.adminRedirectUrl) {
-                            window.location.href = supafayaFirebase.adminRedirectUrl;
+                        // Check for stored redirect URL first
+                        let redirectUrl = localStorage.getItem('supafaya_redirect');
+                        if (redirectUrl) {
+                            localStorage.removeItem('supafaya_redirect');
                         } else {
-                            // Use the normal redirect
-                            window.location.href = response.data.redirect || supafayaFirebase.redirectUrl;
+                            // Use the response redirect or default
+                            redirectUrl = response.data.redirect || supafayaFirebase.redirectUrl;
                         }
+                        
+                        // Redirect
+                        window.location.href = redirectUrl;
                     } else {
                         // Show error message
                         $('#firebase-error').html('Authentication failed: ' + (response.data || 'Unknown error')).show();
@@ -149,5 +215,35 @@
             $('#firebase-loading').hide();
         });
     }
+    
+    // Helper function to set a cookie
+    function setCookie(name, value, days) {
+        var expires = "";
+        if (days) {
+            var date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+    }
 
+    // Add global methods for other scripts to use
+    window.supafayaFirebase = {
+        ...window.supafayaFirebase,
+        getCurrentUser: function() {
+            return currentUser;
+        },
+        getToken: function() {
+            return new Promise((resolve, reject) => {
+                if (currentUser) {
+                    currentUser.getIdToken(true).then(resolve).catch(reject);
+                } else {
+                    reject(new Error('No user is logged in'));
+                }
+            });
+        },
+        isLoggedIn: function() {
+            return currentUser !== null;
+        }
+    };
 })(jQuery); 

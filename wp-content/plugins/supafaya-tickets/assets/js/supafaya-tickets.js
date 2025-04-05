@@ -1,6 +1,48 @@
 (function($) {
     'use strict';
     
+    // Check Firebase authentication status
+    function checkFirebaseAuth() {
+        // If Firebase auth is available
+        if (window.supafayaFirebase && typeof window.supafayaFirebase.isLoggedIn === 'function') {
+            // Return the authentication status
+            return window.supafayaFirebase.isLoggedIn();
+        }
+        return false;
+    }
+
+    // Get Firebase token for API requests
+    function getFirebaseToken() {
+        return new Promise((resolve, reject) => {
+            if (window.supafayaFirebase && typeof window.supafayaFirebase.getToken === 'function') {
+                window.supafayaFirebase.getToken()
+                    .then(resolve)
+                    .catch(reject);
+            } else {
+                reject(new Error('Firebase authentication not available'));
+            }
+        });
+    }
+
+    // Modify all AJAX calls to include the Firebase token
+    $.ajaxPrefilter(function(options, originalOptions, jqXHR) {
+        // Only for our own AJAX URLs
+        if (options.url && options.url.indexOf(supafayaTickets.ajaxUrl) !== -1) {
+            const oldBeforeSend = options.beforeSend;
+            
+            options.beforeSend = function(xhr) {
+                // If there was another beforeSend, call it first
+                if (oldBeforeSend) oldBeforeSend(xhr);
+                
+                // Try to get and set the token from the cookie
+                const match = document.cookie.match(new RegExp('(^| )firebase_user_token=([^;]+)'));
+                if (match) {
+                    xhr.setRequestHeader('X-Firebase-Token', match[2]);
+                }
+            };
+        }
+    });
+    
     // Authentication handling
     function initAuthForms() {
         // Connect Supafaya account form
@@ -313,10 +355,9 @@
 
         // Process checkout
         $(document).on('click', '.checkout-button', function() {
-            // Check if user is logged in
-            if (!supafayaTickets.isLoggedIn) {
-                // Save the checkout URL to cookies instead of sessionStorage
-                // This will be accessible by PHP as well
+            // Check if user is logged in with Firebase
+            if (!checkFirebaseAuth()) {
+                // Save the checkout URL to cookies
                 document.cookie = 'supafaya_checkout_redirect=' + window.location.href + '; path=/; max-age=3600';
                 
                 // Redirect to login page

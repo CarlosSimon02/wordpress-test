@@ -1,27 +1,19 @@
 <?php
 namespace SupafayaTickets;
 
-use SupafayaTickets\Controllers\AuthController;
 use SupafayaTickets\Controllers\EventController;
 use SupafayaTickets\Controllers\TicketController;
-// use SupafayaTickets\Helpers\UserDropdown;
 use SupafayaTickets\Auth\FirebaseAuth;
 
 class Plugin {
-    private $auth_controller;
     private $event_controller;
     private $ticket_controller;
-    // private $user_dropdown;
     private $firebase_auth;
     
     public function init() {
         // Initialize controllers
-        $this->auth_controller = new AuthController();
         $this->event_controller = new EventController();
         $this->ticket_controller = new TicketController();
-        
-        // Initialize helpers
-        // $this->user_dropdownnew UserDropdown();
         
         // Initialize Firebase Auth
         $this->firebase_auth = new FirebaseAuth();
@@ -37,6 +29,7 @@ class Plugin {
         
         // Register shortcodes
         add_shortcode('supafaya_firebase_login', [$this->firebase_auth, 'firebase_login_shortcode']);
+        add_shortcode('supafaya_firebase_logout', [$this->firebase_auth, 'firebase_logout_shortcode']);
     }
     
     public function register_assets() {
@@ -48,7 +41,7 @@ class Plugin {
             SUPAFAYA_VERSION
         );
         
-        // Register the script - fixed extension from .php to .js
+        // Register the script
         wp_register_script(
             'supafaya-tickets-script',
             SUPAFAYA_PLUGIN_URL . 'assets/js/supafaya-tickets.js',
@@ -71,8 +64,8 @@ class Plugin {
             if (!empty($login_pages)) {
                 $login_url = get_permalink($login_pages[0]->ID);
             } else {
-                // Fallback to WordPress login
-                $login_url = wp_login_url();
+                // Fallback to home page
+                $login_url = home_url();
             }
         }
         
@@ -80,7 +73,6 @@ class Plugin {
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('supafaya-tickets-nonce'),
             'pluginUrl' => SUPAFAYA_PLUGIN_URL,
-            'isLoggedIn' => is_user_logged_in(),
             'loginUrl' => $login_url
         ]);
         
@@ -107,9 +99,9 @@ class Plugin {
             has_shortcode($post->post_content, 'supafaya_events') || 
             has_shortcode($post->post_content, 'supafaya_event') || 
             has_shortcode($post->post_content, 'supafaya_ticket_checkout') || 
-            has_shortcode($post->post_content, 'supafaya_my_tickets') || 
-            has_shortcode($post->post_content, 'supafaya_enhanced_login_form') ||
-            has_shortcode($post->post_content, 'supafaya_firebase_login')
+            has_shortcode($post->post_content, 'supafaya_my_tickets') ||
+            has_shortcode($post->post_content, 'supafaya_firebase_login') ||
+            has_shortcode($post->post_content, 'supafaya_firebase_logout')
         )) {
             $load_script = true;
         }
