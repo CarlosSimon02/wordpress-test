@@ -83,7 +83,8 @@
         auth.onAuthStateChanged(function(user) {
             if (user) {
                 // User is signed in
-                currentUser = user;
+                console.log('User is signed in:', user.email);
+                setFirebaseUserCookie(user);
                 
                 // Update UI for logged-in state
                 $('.supafaya-firebase-user-info').html(`
@@ -103,10 +104,10 @@
                 setupAjaxTokenInterceptor(user);
             } else {
                 // User is signed out
-                currentUser = null;
-                
-                // Clear cookie
-                document.cookie = 'firebase_user_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+                console.log('User is signed out');
+                // Clear cookies
+                document.cookie = 'firebase_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                document.cookie = 'firebase_user_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
                 
                 // Update UI for logged-out state
                 $('.supafaya-firebase-user-info').html('');
@@ -123,8 +124,8 @@
             // Sign out from Firebase
             auth.signOut().then(function() {
                 // Clear cookies
-                document.cookie = 'firebase_user_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-                document.cookie = 'supafaya_api_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+                document.cookie = 'firebase_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                document.cookie = 'firebase_user_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
                 
                 // Redirect to home
                 window.location.href = supafayaFirebase.siteUrl;
@@ -247,4 +248,25 @@
             return firebase.auth().currentUser !== null;
         }
     };
+
+    // Add this function to set the user data in a cookie
+    function setFirebaseUserCookie(user) {
+        if (!user) return;
+        
+        // Create a simplified user object with essential data
+        const userData = {
+            uid: user.uid,
+            email: user.email || '',
+            displayName: user.displayName || '',
+            photoURL: user.photoURL || ''
+        };
+        
+        // Set the cookie with user data (expires in 1 day)
+        document.cookie = 'firebase_user=' + JSON.stringify(userData) + '; path=/; max-age=86400; SameSite=Lax';
+        
+        // Also set token in a separate cookie
+        user.getIdToken().then(token => {
+            document.cookie = 'firebase_user_token=' + token + '; path=/; max-age=3600; SameSite=Lax';
+        });
+    }
 })(jQuery); 

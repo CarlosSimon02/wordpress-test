@@ -46,6 +46,20 @@
                 </div>
             </div>
             
+            <div class="customer-details">
+                <h3>Contact Information</h3>
+                <div class="form-field">
+                    <label for="customer_phone">Phone Number (Optional)</label>
+                    <input type="tel" id="customer_phone" name="customer_phone" placeholder="Your phone number">
+                </div>
+            </div>
+            
+            <div class="payment-info">
+                <h3>Payment Method</h3>
+                <p>This transaction will be processed using a secure credit/debit card payment.</p>
+                <p class="small-text">Free tickets will be automatically processed without requiring payment.</p>
+            </div>
+            
             <div class="checkout-actions">
                 <button type="submit" class="checkout-button" disabled>Proceed to Checkout</button>
             </div>

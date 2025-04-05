@@ -393,20 +393,40 @@
             const tickets = [];
             const addons = [];
 
-            // Format tickets for API
+            // Format tickets for API with detailed information
             for (const id in cart.tickets) {
                 tickets.push({
                     ticket_id: id,
-                    quantity: cart.tickets[id].quantity
+                    quantity: cart.tickets[id].quantity,
+                    name: cart.tickets[id].name,
+                    price: cart.tickets[id].price,
+                    description: cart.tickets[id].description || '',
+                    type: cart.tickets[id].type || 'regular'
                 });
             }
 
-            // Format addons for API
+            // Format addons for API with detailed information
             for (const id in cart.addons) {
                 addons.push({
                     addon_id: id,
-                    quantity: cart.addons[id].quantity
+                    quantity: cart.addons[id].quantity,
+                    name: cart.addons[id].name,
+                    price: cart.addons[id].price,
+                    ticket_id: cart.addons[id].ticketId || '' // If the addon is associated with a specific ticket
                 });
+            }
+
+            // Get additional customer info
+            const phoneNumber = $('#customer_phone').val() || '';
+            
+            // Get current user info from Firebase
+            const currentUser = firebase.auth().currentUser;
+            let userEmail = '';
+            let userName = '';
+            
+            if (currentUser) {
+                userEmail = currentUser.email || '';
+                userName = currentUser.displayName || '';
             }
 
             // We already have the current event ID
@@ -415,19 +435,35 @@
                 return;
             }
 
+            // Ensure we have an email address
+            if (!userEmail) {
+                alert('Cannot proceed without user email. Please ensure you are properly logged in.');
+                return;
+            }
+
             // Disable checkout button
             $(this).prop('disabled', true).text('Processing...');
 
+            // Get Firebase token for authentication
+            const firebaseToken = getFirebaseToken();
+            
             // Send AJAX request
             $.ajax({
                 url: supafayaTickets.ajaxUrl,
                 type: 'POST',
+                headers: {
+                    'X-Firebase-Token': firebaseToken
+                },
                 data: {
                     action: 'supafaya_purchase_ticket',
                     nonce: supafayaTickets.nonce,
                     event_id: currentEventId,
                     tickets: tickets,
-                    addons: addons
+                    addons: addons,
+                    phone: phoneNumber,
+                    email: userEmail,
+                    name: userName,
+                    firebase_token: firebaseToken
                 },
                 success: function(response) {
                     // Re-enable checkout button
@@ -442,12 +478,18 @@
                         };
                         saveCartsToStorage();
                         
-                        // Show success message
+                        // If there's a redirect URL in the response, go there
+                        if (response.data && response.data.checkoutUrl) {
+                            window.location.href = response.data.checkoutUrl;
+                            return;
+                        }
+                        
+                        // Otherwise show success message (this would happen for free tickets)
                         $('.event-right-column').html(`
                             <div class="checkout-success">
                                 <h3>Thank you for your purchase!</h3>
                                 <p>${response.message || 'Your tickets have been booked successfully.'}</p>
-                                <p>Reference: ${response.data?.reference_id || ''}</p>
+                                <p>Reference: ${response.data?.id || ''}</p>
                                 <p><a href="/my-tickets" class="view-tickets-button">View My Tickets</a></p>
                             </div>
                         `);
@@ -456,9 +498,10 @@
                         alert('Error: ' + (response.message || 'An error occurred'));
                     }
                 },
-                error: function() {
+                error: function(xhr, status, error) {
                     // Re-enable checkout button
                     $('.checkout-button').prop('disabled', false).text('Proceed to Checkout');
+                    console.error('AJAX Error:', xhr.responseText);
                     alert('A network error occurred. Please try again.');
                 }
             });

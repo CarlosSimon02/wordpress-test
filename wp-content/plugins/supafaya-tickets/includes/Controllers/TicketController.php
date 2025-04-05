@@ -125,25 +125,15 @@ class TicketController
    */
   public function ajax_purchase_ticket()
   {
-    // Check for Firebase token - either in header or cookie
-    $firebase_token = null;
-    
-    // Check if token is in header
-    $headers = function_exists('getallheaders') ? getallheaders() : [];
-    if (isset($headers['X-Firebase-Token'])) {
-      $firebase_token = $headers['X-Firebase-Token'];
-    }
-    // Check if token is in cookie
-    else if (isset($_COOKIE['firebase_user_token'])) {
-      $firebase_token = $_COOKIE['firebase_user_token'];
-    }
+    // Check for Firebase token
+    $firebase_token = $this->get_firebase_token();
     
     if (!$firebase_token) {
-      wp_send_json([
-        'success' => false,
-        'message' => 'User not authenticated'
-      ]);
-      return;
+        wp_send_json([
+            'success' => false,
+            'message' => 'User not authenticated'
+        ]);
+        return;
     }
     
     // Use the Firebase token for API requests
@@ -151,11 +141,23 @@ class TicketController
 
     // Verify nonce for security
     if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'supafaya-tickets-nonce')) {
-      wp_send_json([
-        'success' => false,
-        'message' => 'Security verification failed'
-      ]);
-      return;
+        wp_send_json([
+            'success' => false,
+            'message' => 'Security verification failed'
+        ]);
+        return;
+    }
+
+    // Get user data with improved error handling
+    $user_data = $this->get_user_data();
+    
+    // Validate that we have an email address
+    if (empty($user_data['email'])) {
+        wp_send_json([
+            'success' => false,
+            'message' => 'User email is required. Please make sure you are properly logged in.'
+        ]);
+        return;
     }
 
     $event_id = sanitize_text_field($_POST['event_id'] ?? '');
@@ -163,48 +165,217 @@ class TicketController
     $addons = isset($_POST['addons']) ? $_POST['addons'] : [];
 
     if (empty($event_id) || empty($tickets)) {
-      wp_send_json([
-        'success' => false,
-        'message' => 'Missing required fields'
-      ]);
-      return;
+        wp_send_json([
+            'success' => false,
+            'message' => 'Missing required fields'
+        ]);
+        return;
     }
 
     // Sanitize tickets and addons data
     $sanitized_tickets = [];
+    $ticket_info = [];
     foreach ($tickets as $ticket) {
-      if (isset($ticket['ticket_id']) && isset($ticket['quantity'])) {
-        $sanitized_tickets[] = [
-          'ticket_id' => sanitize_text_field($ticket['ticket_id']),
-          'quantity' => intval($ticket['quantity'])
-        ];
-      }
+        if (isset($ticket['ticket_id']) && isset($ticket['quantity']) && $ticket['quantity'] > 0) {
+            $ticket_id = sanitize_text_field($ticket['ticket_id']);
+            $sanitized_tickets[] = [
+                'ticket_id' => $ticket_id,
+                'quantity' => intval($ticket['quantity'])
+            ];
+            
+            // Store additional ticket info if provided
+            if (isset($ticket['name']) || isset($ticket['price'])) {
+                $ticket_info[$ticket_id] = [
+                    'name' => sanitize_text_field($ticket['name'] ?? ''),
+                    'price' => floatval($ticket['price'] ?? 0),
+                    'description' => sanitize_text_field($ticket['description'] ?? ''),
+                    'type' => sanitize_text_field($ticket['type'] ?? 'regular')
+                ];
+            }
+        }
     }
 
     $sanitized_addons = [];
+    $addon_info = [];
     foreach ($addons as $addon) {
-      if (isset($addon['addon_id']) && isset($addon['quantity'])) {
-        $sanitized_addons[] = [
-          'addon_id' => sanitize_text_field($addon['addon_id']),
-          'quantity' => intval($addon['quantity'])
-        ];
-      }
+        if (isset($addon['addon_id']) && isset($addon['quantity']) && $addon['quantity'] > 0) {
+            $addon_id = sanitize_text_field($addon['addon_id']);
+            $sanitized_addons[] = [
+                'addon_id' => $addon_id,
+                'quantity' => intval($addon['quantity']),
+                'ticket_id' => sanitize_text_field($addon['ticket_id'] ?? '')
+            ];
+            
+            // Store additional addon info if provided
+            if (isset($addon['name']) || isset($addon['price'])) {
+                $addon_info[$addon_id] = [
+                    'name' => sanitize_text_field($addon['name'] ?? ''),
+                    'price' => floatval($addon['price'] ?? 0),
+                    'ticket_id' => sanitize_text_field($addon['ticket_id'] ?? '')
+                ];
+            }
+        }
+    }
+    
+    // Load missing ticket/addon info from database if needed
+    if (empty($ticket_info) || empty($addon_info)) {
+        $this->load_item_info($event_id, $sanitized_tickets, $sanitized_addons, $ticket_info, $addon_info);
     }
 
     // Prepare the complete ticket data
     $ticket_data = [
-      'event_id' => $event_id,
-      'tickets' => $sanitized_tickets
+        'event_id' => $event_id,
+        'tickets' => $sanitized_tickets,
+        'ticket_info' => $ticket_info,
+        'user_data' => $user_data
     ];
 
     // Add addons if present
     if (!empty($sanitized_addons)) {
-      $ticket_data['addons'] = $sanitized_addons;
+        $ticket_data['addons'] = $sanitized_addons;
+        $ticket_data['addon_info'] = $addon_info;
     }
 
     // Call the ticket service to purchase ticket
     $response = $this->ticket_service->purchaseTicket($ticket_data);
 
     wp_send_json($response);
+  }
+
+  /**
+   * Load ticket and addon information from the database
+   */
+  private function load_item_info($event_id, $tickets, $addons, &$ticket_info, &$addon_info)
+  {
+    // Get event tickets to fill in missing info
+    $tickets_response = $this->ticket_service->getEventTickets($event_id);
+    
+    if ($tickets_response['success'] && !empty($tickets_response['data']['data'])) {
+        $available_tickets = $tickets_response['data']['data'];
+        
+        // Fill in ticket info
+        foreach ($tickets as $ticket_item) {
+            $ticket_id = $ticket_item['ticket_id'];
+            
+            // Skip if we already have info for this ticket
+            if (isset($ticket_info[$ticket_id])) {
+                continue;
+            }
+            
+            // Find matching ticket in available tickets
+            foreach ($available_tickets as $available_ticket) {
+                if ($available_ticket['id'] === $ticket_id) {
+                    $ticket_info[$ticket_id] = [
+                        'name' => $available_ticket['name'] ?? '',
+                        'price' => floatval($available_ticket['price'] ?? 0),
+                        'description' => $available_ticket['description'] ?? '',
+                        'type' => $available_ticket['type'] ?? 'regular'
+                    ];
+                    break;
+                }
+            }
+        }
+        
+        // Fill in addon info (assuming addons are available in the same response)
+        if (!empty($addons) && !empty($available_tickets[0]['addons'])) {
+            $available_addons = $available_tickets[0]['addons'];
+            
+            foreach ($addons as $addon_item) {
+                $addon_id = $addon_item['addon_id'];
+                
+                // Skip if we already have info for this addon
+                if (isset($addon_info[$addon_id])) {
+                    continue;
+                }
+                
+                // Find matching addon in available addons
+                foreach ($available_addons as $available_addon) {
+                    if ($available_addon['id'] === $addon_id) {
+                        $addon_info[$addon_id] = [
+                            'name' => $available_addon['name'] ?? '',
+                            'price' => floatval($available_addon['price'] ?? 0),
+                            'ticket_id' => $addon_item['ticket_id'] ?? ''
+                        ];
+                        break;
+                    }
+                }
+            }
+        }
+    }
+  }
+
+  /**
+   * Get user data from Firebase authentication
+   */
+  private function get_user_data() {
+    $user_data = [
+        'name' => '',
+        'email' => '',
+        'phone' => isset($_POST['phone']) ? sanitize_text_field($_POST['phone']) : ''
+    ];
+    
+    // Try to get user data from firebase_user cookie first
+    if (!empty($_COOKIE['firebase_user'])) {
+        $firebase_user = json_decode(stripslashes($_COOKIE['firebase_user']), true);
+        if ($firebase_user && !empty($firebase_user['email'])) {
+            $user_data['name'] = sanitize_text_field($firebase_user['displayName'] ?? '');
+            $user_data['email'] = sanitize_email($firebase_user['email']);
+        }
+    }
+    
+    // If email is still empty, try to get it from Firebase token
+    if (empty($user_data['email'])) {
+        $firebase_token = $this->get_firebase_token();
+        if ($firebase_token) {
+            // Try to decode the token (JWT format)
+            $token_parts = explode('.', $firebase_token);
+            if (count($token_parts) === 3) {
+                $payload = json_decode(base64_decode(str_replace(['-', '_'], ['+', '/'], $token_parts[1])), true);
+                if ($payload && isset($payload['email'])) {
+                    $user_data['email'] = sanitize_email($payload['email']);
+                    if (empty($user_data['name']) && isset($payload['name'])) {
+                        $user_data['name'] = sanitize_text_field($payload['name']);
+                    }
+                }
+            }
+        }
+    }
+    
+    // As a last resort, check if user data was passed directly in the POST request
+    if (empty($user_data['email']) && isset($_POST['email'])) {
+        $user_data['email'] = sanitize_email($_POST['email']);
+    }
+    
+    if (empty($user_data['name']) && isset($_POST['name'])) {
+        $user_data['name'] = sanitize_text_field($_POST['name']);
+    }
+    
+    // Log the user data for debugging
+    error_log('User data for purchase: ' . print_r($user_data, true));
+    
+    return $user_data;
+  }
+
+  /**
+   * Get Firebase token from request
+   */
+  private function get_firebase_token() {
+    // Check if token is in header
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
+    if (isset($headers['X-Firebase-Token'])) {
+        return $headers['X-Firebase-Token'];
+    }
+    
+    // Check if token is in cookie
+    if (isset($_COOKIE['firebase_user_token'])) {
+        return $_COOKIE['firebase_user_token'];
+    }
+    
+    // Check if token is in POST data
+    if (isset($_POST['firebase_token'])) {
+        return sanitize_text_field($_POST['firebase_token']);
+    }
+    
+    return null;
   }
 }
