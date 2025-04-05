@@ -10,6 +10,7 @@ use SupafayaTickets\Api\ApiClient;
 class FirebaseAuth {
     private $auth_service;
     private $api_client;
+    private $user_meta_prefix = 'supafaya_firebase_';
     
     public function __construct() {
         $this->api_client = new ApiClient();
@@ -21,9 +22,82 @@ class FirebaseAuth {
         
         // Add shortcode for login form
         add_shortcode('supafaya_firebase_login', [$this, 'firebase_login_shortcode']);
+        add_shortcode('supafaya_firebase_logout', [$this, 'firebase_logout_shortcode']);
         
         // Enqueue Firebase scripts
         add_action('wp_enqueue_scripts', [$this, 'enqueue_firebase_scripts']);
+        
+        // Add filter for API token
+        add_filter('supafaya_api_token', [$this, 'get_firebase_user_token']);
+        
+        // Override determine_current_user but ONLY on the frontend, not in admin
+        if (!is_admin()) {
+            add_filter('determine_current_user', [$this, 'authenticate_firebase_user'], 20);
+        }
+    }
+    
+    /**
+     * Authenticate user based on Firebase cookie
+     */
+    public function authenticate_firebase_user($user_id) {
+        // If already authenticated, don't override
+        if ($user_id && $user_id > 0) {
+            return $user_id;
+        }
+        
+        // Check for Firebase cookie
+        if (isset($_COOKIE['firebase_user_token'])) {
+            $token = sanitize_text_field($_COOKIE['firebase_user_token']);
+            
+            // Find user by token in user meta
+            $users = get_users([
+                'meta_key' => $this->user_meta_prefix . 'current_token',
+                'meta_value' => $token,
+                'number' => 1,
+                'count_total' => false
+            ]);
+            
+            if (!empty($users)) {
+                return $users[0]->ID;
+            }
+        }
+        
+        return $user_id;
+    }
+    
+    /**
+     * Get token for current Firebase user
+     */
+    public function get_firebase_user_token() {
+        $user = wp_get_current_user();
+        
+        if ($user->ID > 0) {
+            $token_data = get_user_meta($user->ID, $this->user_meta_prefix . 'token_data', true);
+            
+            if ($token_data) {
+                $validated_token = $this->auth_service->validateToken($token_data);
+                
+                if ($validated_token) {
+                    // Update if token was refreshed
+                    if ($validated_token !== $token_data) {
+                        update_user_meta($user->ID, $this->user_meta_prefix . 'token_data', $validated_token);
+                    }
+                    
+                    return $validated_token['access_token'];
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Firebase logout shortcode
+     */
+    public function firebase_logout_shortcode($atts) {
+        ob_start();
+        include SUPAFAYA_PLUGIN_DIR . 'templates/firebase-logout.php';
+        return ob_get_clean();
     }
     
     /**
@@ -168,12 +242,18 @@ class FirebaseAuth {
         }
         
         // Store Supafaya tokens in user meta
-        $this->auth_service->storeUserToken($user_id, $api_response);
+        update_user_meta($user_id, $this->user_meta_prefix . 'token_data', $api_response);
         
-        // Store Firebase UID for future reference
-        update_user_meta($user_id, 'supafaya_firebase_uid', $user_data['uid']);
+        // Store Firebase UID and current token for lookup
+        update_user_meta($user_id, $this->user_meta_prefix . 'uid', $user_data['uid']);
+        update_user_meta($user_id, $this->user_meta_prefix . 'current_token', $token);
         
-        // Log the user in
+        // Set cookie for client-side authentication
+        $secure = is_ssl();
+        $httponly = true;
+        setcookie('firebase_user_token', $token, time() + DAY_IN_SECONDS, COOKIEPATH, COOKIE_DOMAIN, $secure, $httponly);
+        
+        // Log the user in by setting auth cookie
         wp_set_auth_cookie($user_id, true);
         
         wp_send_json_success([

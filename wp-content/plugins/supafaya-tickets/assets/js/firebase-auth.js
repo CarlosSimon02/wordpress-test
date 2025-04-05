@@ -72,6 +72,30 @@
                 // handleSignIn will be called by the UI callback
             }
         });
+
+        // Get redirect_to parameter from URL if present
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectTo = urlParams.get('redirect_to');
+        if (redirectTo) {
+            // Store the admin redirect in a variable to use later
+            supafayaFirebase.adminRedirectUrl = redirectTo;
+        }
+
+        // Add this inside the document ready function:
+        $('.firebase-logout-button').on('click', function(e) {
+            e.preventDefault();
+            
+            // Sign out from Firebase
+            firebase.auth().signOut().then(function() {
+                // Remove the cookie
+                document.cookie = 'firebase_user_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+                
+                // Redirect to logout URL in WordPress
+                window.location.href = wordpress_url + '/wp-login.php?action=logout&_wpnonce=' + wp_logout_nonce;
+            }).catch(function(error) {
+                console.error('Sign Out Error', error);
+            });
+        });
     });
 
     // Handle user sign in - authenticate with WordPress backend
@@ -100,8 +124,13 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Redirect to the requested URL
-                        window.location.href = response.data.redirect || supafayaFirebase.redirectUrl;
+                        // Check if we have an admin redirect URL
+                        if (supafayaFirebase.adminRedirectUrl) {
+                            window.location.href = supafayaFirebase.adminRedirectUrl;
+                        } else {
+                            // Use the normal redirect
+                            window.location.href = response.data.redirect || supafayaFirebase.redirectUrl;
+                        }
                     } else {
                         // Show error message
                         $('#firebase-error').html('Authentication failed: ' + (response.data || 'Unknown error')).show();
