@@ -30,6 +30,10 @@ class Plugin {
         // Register shortcodes
         add_shortcode('supafaya_firebase_login', [$this->firebase_auth, 'firebase_login_shortcode']);
         add_shortcode('supafaya_firebase_logout', [$this->firebase_auth, 'firebase_logout_shortcode']);
+        
+        // Set up AJAX for all requests
+        add_action('wp_ajax_nopriv_supafaya_purchase_ticket', [$this->ticket_controller, 'ajax_purchase_ticket']);
+        add_action('wp_ajax_supafaya_purchase_ticket', [$this->ticket_controller, 'ajax_purchase_ticket']);
     }
     
     public function register_assets() {
@@ -107,11 +111,18 @@ class Plugin {
         }
         
         if ($load_script) {
-            // Make sure supafaya-tickets.js depends on supafaya-firebase
+            // Make sure supafaya-tickets.js depends on firebase
+            $depends = ['jquery'];
+            
+            // Add supafaya-firebase as a dependency if it's been enqueued
+            if (wp_script_is('supafaya-firebase', 'registered')) {
+                $depends[] = 'supafaya-firebase';
+            }
+            
             wp_enqueue_script(
                 'supafaya-tickets-script',
                 SUPAFAYA_PLUGIN_URL . 'assets/js/supafaya-tickets.js',
-                ['jquery', 'supafaya-firebase'],
+                $depends,
                 SUPAFAYA_VERSION,
                 true
             );

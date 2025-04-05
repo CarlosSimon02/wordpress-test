@@ -24,8 +24,9 @@ class TicketController
     add_shortcode('supafaya_ticket_checkout', [$this, 'ticket_checkout_shortcode']);
     add_shortcode('supafaya_my_tickets', [$this, 'my_tickets_shortcode']);
 
-    // Register AJAX handlers
+    // Register AJAX handlers for both logged in and not logged in users
     add_action('wp_ajax_supafaya_purchase_ticket', [$this, 'ajax_purchase_ticket']);
+    add_action('wp_ajax_nopriv_supafaya_purchase_ticket', [$this, 'ajax_purchase_ticket']);
   }
 
   /**
@@ -52,9 +53,12 @@ class TicketController
       return '<p>Error: Event ID is required</p>';
     }
 
-    // Check if user is logged in
-    if (!is_user_logged_in()) {
-      return '<p>Please <a href="' . wp_login_url(get_permalink()) . '">login</a> to purchase tickets</p>';
+    // Get Firebase token from cookie - no longer requiring WordPress login
+    $firebase_logged_in = isset($_COOKIE['firebase_user_token']);
+    if (!$firebase_logged_in) {
+      // Redirect to login page
+      $login_url = get_option('supafaya_login_page_url', home_url());
+      return '<p>Please <a href="' . esc_url($login_url) . '">login</a> to purchase tickets</p>';
     }
 
     // Get event details using the event service directly
@@ -93,9 +97,12 @@ class TicketController
       'limit' => 10,
     ], $atts);
 
-    // Check if user is logged in
-    if (!is_user_logged_in()) {
-      return '<p>Please <a href="' . wp_login_url(get_permalink()) . '">login</a> to view your tickets</p>';
+    // Check if Firebase user is logged in via cookie
+    $firebase_logged_in = isset($_COOKIE['firebase_user_token']);
+    if (!$firebase_logged_in) {
+      // Redirect to login page
+      $login_url = get_option('supafaya_login_page_url', home_url());
+      return '<p>Please <a href="' . esc_url($login_url) . '">login</a> to view your tickets</p>';
     }
 
     $response = $this->ticket_service->getUserTickets([
@@ -118,14 +125,29 @@ class TicketController
    */
   public function ajax_purchase_ticket()
   {
-    // Check if user is logged in
-    if (!is_user_logged_in()) {
+    // Check for Firebase token - either in header or cookie
+    $firebase_token = null;
+    
+    // Check if token is in header
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
+    if (isset($headers['X-Firebase-Token'])) {
+      $firebase_token = $headers['X-Firebase-Token'];
+    }
+    // Check if token is in cookie
+    else if (isset($_COOKIE['firebase_user_token'])) {
+      $firebase_token = $_COOKIE['firebase_user_token'];
+    }
+    
+    if (!$firebase_token) {
       wp_send_json([
         'success' => false,
-        'message' => 'User not logged in'
+        'message' => 'User not authenticated'
       ]);
       return;
     }
+    
+    // Use the Firebase token for API requests
+    $this->api_client->setToken($firebase_token);
 
     // Verify nonce for security
     if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'supafaya-tickets-nonce')) {

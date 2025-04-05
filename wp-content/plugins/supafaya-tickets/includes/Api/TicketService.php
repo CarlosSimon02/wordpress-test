@@ -12,7 +12,7 @@ class TicketService {
      * Purchase ticket
      */
     public function purchaseTicket($ticket_data) {
-        return $this->api_client->post('/events/tickets/purchase', $ticket_data);
+        return $this->api_client->post('/payments/initialize', $ticket_data);
     }
     
     /**
