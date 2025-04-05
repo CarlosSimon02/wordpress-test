@@ -107,7 +107,14 @@ class Plugin {
         }
         
         if ($load_script) {
-            wp_enqueue_script('supafaya-tickets-script');
+            // Make sure supafaya-tickets.js depends on supafaya-firebase
+            wp_enqueue_script(
+                'supafaya-tickets-script',
+                SUPAFAYA_PLUGIN_URL . 'assets/js/supafaya-tickets.js',
+                ['jquery', 'supafaya-firebase'],
+                SUPAFAYA_VERSION,
+                true
+            );
         }
     }
     

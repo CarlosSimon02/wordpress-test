@@ -3,24 +3,48 @@
     
     // Check Firebase authentication status
     function checkFirebaseAuth() {
-        // If Firebase auth is available
+        // Check if Firebase is available
+        if (typeof firebase !== 'undefined' && firebase.auth) {
+            // Get the current user
+            const user = firebase.auth().currentUser;
+            return !!user; // Convert to boolean
+        }
+        
+        // If Firebase auth is available via our global object
         if (window.supafayaFirebase && typeof window.supafayaFirebase.isLoggedIn === 'function') {
             // Return the authentication status
             return window.supafayaFirebase.isLoggedIn();
         }
+        
+        console.warn('Firebase authentication not initialized');
         return false;
     }
 
     // Get Firebase token for API requests
     function getFirebaseToken() {
         return new Promise((resolve, reject) => {
+            // Try direct Firebase auth first
+            if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
+                firebase.auth().currentUser.getIdToken(true).then(resolve).catch(reject);
+                return;
+            }
+            
+            // Then try our global helper
             if (window.supafayaFirebase && typeof window.supafayaFirebase.getToken === 'function') {
                 window.supafayaFirebase.getToken()
                     .then(resolve)
                     .catch(reject);
-            } else {
-                reject(new Error('Firebase authentication not available'));
+                return;
             }
+            
+            // Finally check the cookie as fallback
+            const match = document.cookie.match(new RegExp('(^| )firebase_user_token=([^;]+)'));
+            if (match) {
+                resolve(match[2]);
+                return;
+            }
+            
+            reject(new Error('Firebase authentication not available'));
         });
     }
 

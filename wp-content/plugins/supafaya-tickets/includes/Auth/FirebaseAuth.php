@@ -76,12 +76,32 @@ class FirebaseAuth {
      * Enqueue Firebase scripts and styles
      */
     public function enqueue_firebase_scripts() {
-        // Only enqueue on pages with our shortcode
+        // Load Firebase scripts on more pages
         global $post;
-        if (is_a($post, 'WP_Post') && 
-           (has_shortcode($post->post_content, 'supafaya_firebase_login') || 
-            has_shortcode($post->post_content, 'supafaya_firebase_logout'))) {
-            
+        $should_load = false;
+        
+        // Check if we're on a page with the login shortcode
+        if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'supafaya_firebase_login')) {
+            $should_load = true;
+        }
+        
+        // Also load on pages with checkout functionality
+        if (isset($_GET['event_id'])) {
+            $should_load = true;
+        }
+        
+        // Load on any page with our other shortcodes
+        if (is_a($post, 'WP_Post') && (
+            has_shortcode($post->post_content, 'supafaya_events') || 
+            has_shortcode($post->post_content, 'supafaya_event') || 
+            has_shortcode($post->post_content, 'supafaya_ticket_checkout') || 
+            has_shortcode($post->post_content, 'supafaya_my_tickets') ||
+            has_shortcode($post->post_content, 'supafaya_firebase_logout')
+        )) {
+            $should_load = true;
+        }
+        
+        if ($should_load) {
             // Firebase core
             wp_enqueue_script(
                 'firebase-app',
@@ -100,28 +120,30 @@ class FirebaseAuth {
                 true
             );
             
-            // Firebase UI
-            wp_enqueue_script(
-                'firebaseui',
-                'https://www.gstatic.com/firebasejs/ui/6.0.0/firebase-ui-auth.js',
-                ['firebase-auth'],
-                null,
-                true
-            );
-            
-            // Firebase UI CSS
-            wp_enqueue_style(
-                'firebaseui-css',
-                'https://www.gstatic.com/firebasejs/ui/6.0.0/firebase-ui-auth.css',
-                [],
-                null
-            );
+            // Firebase UI (only needed on login page)
+            if (has_shortcode($post->post_content, 'supafaya_firebase_login')) {
+                wp_enqueue_script(
+                    'firebaseui',
+                    'https://www.gstatic.com/firebasejs/ui/6.0.0/firebase-ui-auth.js',
+                    ['firebase-auth'],
+                    null,
+                    true
+                );
+                
+                // Firebase UI CSS
+                wp_enqueue_style(
+                    'firebaseui-css',
+                    'https://www.gstatic.com/firebasejs/ui/6.0.0/firebase-ui-auth.css',
+                    [],
+                    null
+                );
+            }
             
             // Our custom Firebase handler
             wp_enqueue_script(
                 'supafaya-firebase',
                 SUPAFAYA_PLUGIN_URL . 'assets/js/firebase-auth.js',
-                ['jquery', 'firebaseui'],
+                ['jquery', 'firebase-auth'],
                 SUPAFAYA_VERSION,
                 true
             );

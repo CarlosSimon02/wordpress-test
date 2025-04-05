@@ -231,19 +231,20 @@
     window.supafayaFirebase = {
         ...window.supafayaFirebase,
         getCurrentUser: function() {
-            return currentUser;
+            return firebase.auth().currentUser;
         },
         getToken: function() {
             return new Promise((resolve, reject) => {
-                if (currentUser) {
-                    currentUser.getIdToken(true).then(resolve).catch(reject);
+                const user = firebase.auth().currentUser;
+                if (user) {
+                    user.getIdToken(true).then(resolve).catch(reject);
                 } else {
                     reject(new Error('No user is logged in'));
                 }
             });
         },
         isLoggedIn: function() {
-            return currentUser !== null;
+            return firebase.auth().currentUser !== null;
         }
     };
 })(jQuery); 
