@@ -115,26 +115,44 @@
         const eventPage = $('.supafaya-event-single');
         if (eventPage.length === 0) return;
 
-        // Initialize cart from localStorage or create a new one
-        const cart = loadCartFromStorage() || {
-            tickets: {},
-            addons: {},
-            total: 0
-        };
+        // Get current event ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentEventId = urlParams.get('event_id');
         
-        // Save cart to localStorage
-        function saveCartToStorage() {
-            localStorage.setItem('supafaya_cart', JSON.stringify(cart));
+        if (!currentEventId) {
+            console.error('Event ID not found in URL');
+            return;
+        }
+
+        // Initialize cart from localStorage or create a new one
+        // The cart now stores items by event ID
+        const allCarts = loadCartsFromStorage() || {};
+        
+        // Initialize current event's cart if it doesn't exist
+        if (!allCarts[currentEventId]) {
+            allCarts[currentEventId] = {
+                tickets: {},
+                addons: {},
+                total: 0
+            };
         }
         
-        // Load cart from localStorage
-        function loadCartFromStorage() {
-            const savedCart = localStorage.getItem('supafaya_cart');
-            if (savedCart) {
+        // Reference to the current event's cart
+        const cart = allCarts[currentEventId];
+        
+        // Save all carts to localStorage
+        function saveCartsToStorage() {
+            localStorage.setItem('supafaya_carts', JSON.stringify(allCarts));
+        }
+        
+        // Load all carts from localStorage
+        function loadCartsFromStorage() {
+            const savedCarts = localStorage.getItem('supafaya_carts');
+            if (savedCarts) {
                 try {
-                    return JSON.parse(savedCart);
+                    return JSON.parse(savedCarts);
                 } catch (e) {
-                    console.error('Error parsing cart from localStorage', e);
+                    console.error('Error parsing carts from localStorage', e);
                     return null;
                 }
             }
@@ -227,7 +245,7 @@
             }, 1500);
 
             updateOrderSummary();
-            saveCartToStorage();
+            saveCartsToStorage();
         });
 
         // Add addon to cart
@@ -281,7 +299,7 @@
             }, 1500);
 
             updateOrderSummary();
-            saveCartToStorage();
+            saveCartsToStorage();
         });
 
         // Clear cart
@@ -290,15 +308,16 @@
             cart.addons = {};
             cart.total = 0;
             updateOrderSummary();
-            saveCartToStorage();
+            saveCartsToStorage();
         });
 
         // Process checkout
         $(document).on('click', '.checkout-button', function() {
             // Check if user is logged in
             if (!supafayaTickets.isLoggedIn) {
-                // Save return URL to session storage
-                sessionStorage.setItem('supafaya_checkout_redirect', window.location.href);
+                // Save the checkout URL to cookies instead of sessionStorage
+                // This will be accessible by PHP as well
+                document.cookie = 'supafaya_checkout_redirect=' + window.location.href + '; path=/; max-age=3600';
                 
                 // Redirect to login page
                 window.location.href = supafayaTickets.loginUrl;
@@ -325,11 +344,8 @@
                 });
             }
 
-            // Get event ID from URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const eventId = urlParams.get('event_id');
-
-            if (!eventId) {
+            // We already have the current event ID
+            if (!currentEventId) {
                 alert('Event ID not found in URL');
                 return;
             }
@@ -344,7 +360,7 @@
                 data: {
                     action: 'supafaya_purchase_ticket',
                     nonce: supafayaTickets.nonce,
-                    event_id: eventId,
+                    event_id: currentEventId,
                     tickets: tickets,
                     addons: addons
                 },
@@ -353,6 +369,14 @@
                     $('.checkout-button').prop('disabled', false).text('Proceed to Checkout');
 
                     if (response.success) {
+                        // Clear this event's cart after successful purchase
+                        allCarts[currentEventId] = {
+                            tickets: {},
+                            addons: {},
+                            total: 0
+                        };
+                        saveCartsToStorage();
+                        
                         // Show success message
                         $('.event-right-column').html(`
                             <div class="checkout-success">
@@ -454,7 +478,7 @@
             }
             
             updateOrderSummary();
-            saveCartToStorage();
+            saveCartsToStorage();
         });
 
         // Initialize with empty cart

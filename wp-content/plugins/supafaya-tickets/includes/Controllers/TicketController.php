@@ -128,7 +128,7 @@ class TicketController
     }
 
     // Verify nonce for security
-    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'supafaya_ticket_nonce')) {
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'supafaya-tickets-nonce')) {
       wp_send_json([
         'success' => false,
         'message' => 'Security verification failed'

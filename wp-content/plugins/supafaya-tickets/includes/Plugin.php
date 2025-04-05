@@ -57,16 +57,23 @@ class Plugin {
             true
         );
         
-        // Get login URL - look for a page with our login shortcode
-        $login_url = wp_login_url();
-        $login_pages = get_posts([
-            'post_type' => 'page',
-            'posts_per_page' => 1,
-            's' => '[supafaya_firebase_login]'
-        ]);
+        // Get login URL - first check if it's configured in settings
+        $login_url = get_option('supafaya_login_page_url', '');
         
-        if (!empty($login_pages)) {
-            $login_url = get_permalink($login_pages[0]->ID);
+        // If not set in settings, look for a page with our login shortcode
+        if (empty($login_url)) {
+            $login_pages = get_posts([
+                'post_type' => 'page',
+                'posts_per_page' => 1,
+                's' => '[supafaya_firebase_login]'
+            ]);
+            
+            if (!empty($login_pages)) {
+                $login_url = get_permalink($login_pages[0]->ID);
+            } else {
+                // Fallback to WordPress login
+                $login_url = wp_login_url();
+            }
         }
         
         wp_localize_script('supafaya-tickets-script', 'supafayaTickets', [
@@ -137,6 +144,7 @@ class Plugin {
         register_setting('supafaya_tickets_options', 'supafaya_api_url');
         register_setting('supafaya_tickets_options', 'supafaya_organization_id');
         register_setting('supafaya_tickets_options', 'supafaya_event_page_url');
+        register_setting('supafaya_tickets_options', 'supafaya_login_page_url');
         
         // Firebase settings
         register_setting('supafaya_tickets_options', 'supafaya_firebase_api_key');
@@ -173,7 +181,19 @@ class Plugin {
             'supafaya-tickets-settings',
             'supafaya_tickets_main'
         );
-
+        
+        add_settings_field(
+            'supafaya_login_page_url',
+            'Login Page URL',
+            function() {
+                $value = get_option('supafaya_login_page_url', '');
+                echo '<input type="text" name="supafaya_login_page_url" value="' . esc_attr($value) . '" class="regular-text">';
+                echo '<p class="description">Enter the full URL of your login page (with Firebase auth). Leave empty to auto-detect.</p>';
+            },
+            'supafaya-tickets-settings',
+            'supafaya_tickets_main'
+        );
+        
         add_settings_field(
             'supafaya_event_page_url',
             'Event Details Page URL',

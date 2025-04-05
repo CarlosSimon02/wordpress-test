@@ -48,7 +48,8 @@ This plugin integrates your WordPress site with the Supafaya Ticketing API.
    - Firebase API Key: Your `apiKey` value
    - Firebase Auth Domain: Your `authDomain` value
    - Firebase Project ID: Your `projectId` value
-4. Save the settings
+4. In the "Main Settings" section, you can optionally specify a custom Login Page URL if you've created a page with the Firebase login shortcode.
+5. Save the settings
 
 ### Step 5: Create a Login Page
 
@@ -56,14 +57,16 @@ This plugin integrates your WordPress site with the Supafaya Ticketing API.
 2. Give it a title (e.g., "Login")
 3. Add the shortcode: `[supafaya_firebase_login]`
 4. Publish the page
+5. The plugin will automatically detect this page, or you can manually set it in the plugin settings
 
 ## Cart and Checkout Integration
 
-This plugin automatically handles cart persistence when users log in:
+This plugin includes sophisticated cart management features:
 
-1. When non-logged-in users add items to their cart, the items are saved in localStorage
-2. If they attempt to checkout, they're redirected to the login page
-3. After logging in with Firebase, they're redirected back to checkout with their cart intact
+1. **Event-Specific Carts**: Each event has its own separate cart, meaning items from one event won't appear when viewing another event.
+2. **Persistent Cart Storage**: Cart contents are saved in localStorage for each event.
+3. **Authentication Integration**: When users try to checkout without being logged in, they're redirected to the login page. After authentication, they return to checkout with their cart intact.
+4. **Automatic Event Detection**: The current event is detected from the URL parameter.
 
 ## User Dropdown Menu
 
@@ -78,6 +81,7 @@ The plugin adds a user dropdown to your site's main menu:
 2. In the "Main Settings" section, configure your API connection:
    - API URL: The URL to your Supafaya API
    - Default Organization ID: Your organization ID in Supafaya
+   - Login Page URL: The URL to your custom login page (optional)
 
 ## Available Shortcodes
 
@@ -98,6 +102,12 @@ The plugin adds a user dropdown to your site's main menu:
 - Make sure localStorage is enabled in your browser
 - Check the browser console for any JavaScript errors
 - Ensure your checkout redirect is properly set up
+
+### "Security verification failed" Error
+- This error typically occurs if the nonce verification fails
+- Try refreshing the page to get a new nonce
+- Check that your server time is accurate
+- Make sure you're using the latest version of the plugin
 
 ### API Connection Issues
 - Verify your API URL in the plugin settings
