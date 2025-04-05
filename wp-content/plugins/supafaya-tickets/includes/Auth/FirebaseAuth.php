@@ -195,11 +195,117 @@ class FirebaseAuth {
     }
     
     /**
+     * Enhanced logging function
+     * 
+     * @param string $message Log message
+     * @param mixed $data Optional data to include
+     * @param string $level Log level (info, warning, error)
+     */
+    private function log_debug($message, $data = null, $level = 'info') {
+        $log_prefix = '[Supafaya Firebase Debug]';
+        $timestamp = date('Y-m-d H:i:s');
+        
+        // Format the log message
+        $log_message = "$log_prefix [$timestamp] [$level] $message";
+        
+        // Add data if provided
+        if ($data !== null) {
+            // For sensitive data like tokens, show only part
+            if (is_string($data) && strlen($data) > 50 && (strpos(strtolower($message), 'token') !== false)) {
+                $partial_data = substr($data, 0, 20) . '...[truncated]...';
+                $log_message .= " Data: " . print_r($partial_data, true);
+            } else {
+                $log_message .= " Data: " . print_r($data, true);
+            }
+        }
+        
+        // Write to WordPress debug log
+        error_log($log_message);
+    }
+    
+    /**
+     * Check if user exists in Firestore by ID
+     * 
+     * @param string $token Firebase ID token
+     * @param string $user_id User ID to check
+     * @return bool Whether user exists
+     */
+    private function check_user_exists($token, $user_id) {
+        $this->log_debug("Checking if user exists in Firestore", $user_id);
+        
+        // Get API URL from settings or constant
+        $api_url = get_option('supafaya_api_url', SUPAFAYA_API_URL);
+        $this->log_debug("API URL", $api_url);
+        
+        // Build the URL for user check
+        $user_check_url = trailingslashit($api_url) . 'api/v1/users/' . $user_id;
+        $this->log_debug("User check URL", $user_check_url);
+        
+        // Set up request args
+        $args = [
+            'method' => 'GET',
+            'timeout' => 30,
+            'redirection' => 5,
+            'httpversion' => '1.1',
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+                'Authorization' => 'Bearer ' . $token,
+                'X-Access-Token' => $token
+            ],
+            'sslverify' => false
+        ];
+        
+        $this->log_debug("User check request headers", $args['headers']);
+        
+        // Make the request
+        $this->log_debug("Sending request to check if user exists");
+        $response = wp_remote_get($user_check_url, $args);
+        
+        // Check for errors
+        if (is_wp_error($response)) {
+            $error_message = $response->get_error_message();
+            $this->log_debug("Error checking if user exists", $error_message, 'error');
+            return false;
+        }
+        
+        // Get response data
+        $status_code = wp_remote_retrieve_response_code($response);
+        $response_body = wp_remote_retrieve_body($response);
+        $response_headers = wp_remote_retrieve_headers($response);
+        
+        $this->log_debug("User check response status", $status_code);
+        $this->log_debug("User check response headers", $response_headers);
+        $this->log_debug("User check response body", $response_body);
+        
+        // Parse response body as JSON if possible
+        $response_data = json_decode($response_body, true);
+        if (json_last_error() === JSON_ERROR_NONE) {
+            $this->log_debug("Parsed response data", $response_data);
+        } else {
+            $this->log_debug("Failed to parse response as JSON", json_last_error_msg(), 'warning');
+        }
+        
+        // If status is 200, user exists
+        if ($status_code === 200) {
+            $this->log_debug("User exists in Firestore", $user_id);
+            return true;
+        }
+        
+        // User not found (typically 404) or other error
+        $this->log_debug("User does not exist in Firestore", ['user_id' => $user_id, 'status' => $status_code], 'warning');
+        return false;
+    }
+    
+    /**
      * Handle Firebase auth AJAX request
      */
     public function handle_firebase_auth() {
+        $this->log_debug("Starting Firebase authentication handling");
+        
         // Verify nonce
         if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'supafaya-firebase-nonce')) {
+            $this->log_debug("Invalid nonce", $_POST['nonce'] ?? 'not set', 'error');
             wp_send_json_error('Invalid nonce');
             exit;
         }
@@ -208,10 +314,25 @@ class FirebaseAuth {
         $token = isset($_POST['token']) ? sanitize_text_field($_POST['token']) : '';
         $user_data = isset($_POST['user']) ? $_POST['user'] : [];
         
-        if (empty($token) || empty($user_data)) {
-            wp_send_json_error('Missing token or user data');
+        if (empty($token)) {
+            $this->log_debug("Missing token", null, 'error');
+            wp_send_json_error('Missing token');
             exit;
         }
+        
+        if (empty($user_data)) {
+            $this->log_debug("Missing user data", null, 'error');
+            wp_send_json_error('Missing user data');
+            exit;
+        }
+        
+        $this->log_debug("Received user data from frontend", [
+            'uid' => $user_data['uid'] ?? 'not set',
+            'email' => $user_data['email'] ?? 'not set',
+            'displayName' => $user_data['displayName'] ?? 'not set',
+            'hasPhotoURL' => isset($user_data['photoURL']),
+            'providerId' => $user_data['providerId'] ?? 'not set'
+        ]);
         
         // Sanitize user data
         $user_data = [
@@ -222,17 +343,28 @@ class FirebaseAuth {
             'providerId' => sanitize_text_field($user_data['providerId'] ?? '')
         ];
         
+        $this->log_debug("Sanitized user data", $user_data);
+        
         // Authenticate with Supafaya API using Firebase token
+        $this->log_debug("Authenticating with Supafaya API using Firebase token");
         $api_response = $this->auth_service->loginWithFirebase($token, $user_data);
         
-        if (!$api_response || !isset($api_response['access_token'])) {
-            wp_send_json_error('Failed to authenticate with API');
-            exit;
+        // Even if API authentication fails, proceed with creating the user in Firestore directly
+        $this->log_debug("Proceeding to create/check Firestore user directly with Firebase token");
+        
+        // Try to create user in Firestore directly using the Firebase token
+        $this->log_debug("Attempting to create Firestore user directly");
+        
+        // Create or update user in Firestore
+        $user_created = $this->create_or_check_firestore_user_directly($token, $user_data);
+        
+        // Store token in cookie (even if it's temporary)
+        if ($api_response) {
+            $this->log_debug("Storing API tokens in cookie");
+            $this->store_api_token_in_cookie($api_response);
         }
         
-        // Store API tokens in cookie (encrypted)
-        $this->store_api_token_in_cookie($api_response);
-        
+        $this->log_debug("Authentication process completed");
         wp_send_json_success([
             'message' => 'Authentication successful',
             'user' => [
@@ -240,14 +372,127 @@ class FirebaseAuth {
                 'name' => $user_data['displayName'],
                 'photo' => $user_data['photoURL']
             ],
-            'redirect' => $this->get_redirect_url()
+            'redirect' => $this->get_redirect_url(),
+            'user_created' => $user_created
         ]);
+    }
+    
+    /**
+     * Create or check for user in Firestore directly
+     */
+    private function create_or_check_firestore_user_directly($token, $user_data) {
+        $this->log_debug("Attempting direct Firestore user creation/check");
+        
+        // Try to make a direct request to Firebase using the REST API
+        $firebase_project_id = get_option('supafaya_firebase_project_id', '');
+        if (empty($firebase_project_id)) {
+            $this->log_debug("Missing Firebase project ID", null, 'error');
+            return false;
+        }
+        
+        // Build Firebase Firestore REST API URL
+        $firestore_url = "https://firestore.googleapis.com/v1/projects/{$firebase_project_id}/databases/(default)/documents/users/{$user_data['uid']}";
+        $this->log_debug("Firestore URL", $firestore_url);
+        
+        // First, check if user exists
+        $args = [
+            'method' => 'GET',
+            'timeout' => 30,
+            'redirection' => 5,
+            'httpversion' => '1.1',
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+                'Authorization' => 'Bearer ' . $token
+            ],
+            'sslverify' => false
+        ];
+        
+        $this->log_debug("Checking if user exists in Firestore");
+        $response = wp_remote_get($firestore_url, $args);
+        
+        $user_exists = false;
+        
+        if (!is_wp_error($response)) {
+            $status_code = wp_remote_retrieve_response_code($response);
+            $response_body = wp_remote_retrieve_body($response);
+            
+            $this->log_debug("User check response status", $status_code);
+            $this->log_debug("User check response body", $response_body);
+            
+            $user_exists = ($status_code === 200);
+        }
+        
+        if ($user_exists) {
+            $this->log_debug("User already exists in Firestore", $user_data['uid']);
+            return true;
+        }
+        
+        // User doesn't exist, create it
+        $this->log_debug("User doesn't exist, creating now");
+        
+        // Current timestamp
+        $timestamp = date('c');
+        
+        // Prepare user data in Firestore document format
+        $firestore_doc = [
+            'fields' => [
+                'id' => ['stringValue' => $user_data['uid']],
+                'email' => ['stringValue' => $user_data['email']],
+                'name' => ['stringValue' => $user_data['displayName'] ?? ''],
+                'photoUrl' => ['stringValue' => $user_data['photoURL'] ?? ''],
+                'isGettingStarted' => ['booleanValue' => false],
+                'interests' => ['nullValue' => null],
+                'birthday' => ['nullValue' => null],
+                'createdAt' => ['stringValue' => $timestamp],
+                'updatedAt' => ['stringValue' => $timestamp]
+            ]
+        ];
+        
+        $args = [
+            'method' => 'POST',
+            'timeout' => 30,
+            'redirection' => 5,
+            'httpversion' => '1.1',
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+                'Authorization' => 'Bearer ' . $token
+            ],
+            'body' => json_encode($firestore_doc),
+            'sslverify' => false
+        ];
+        
+        // Use the parent collection URL for creation
+        $parent_url = "https://firestore.googleapis.com/v1/projects/{$firebase_project_id}/databases/(default)/documents/users?documentId={$user_data['uid']}";
+        
+        $this->log_debug("Creating user document with URL", $parent_url);
+        $response = wp_remote_post($parent_url, $args);
+        
+        if (is_wp_error($response)) {
+            $this->log_debug("Error creating user document", $response->get_error_message(), 'error');
+            return false;
+        }
+        
+        $status_code = wp_remote_retrieve_response_code($response);
+        $response_body = wp_remote_retrieve_body($response);
+        
+        $this->log_debug("User creation response status", $status_code);
+        $this->log_debug("User creation response body", $response_body);
+        
+        return ($status_code >= 200 && $status_code < 300);
     }
     
     /**
      * Store API token in a secure cookie
      */
     private function store_api_token_in_cookie($token_data) {
+        $this->log_debug("Storing API token in cookie", [
+            'has_access_token' => isset($token_data['access_token']),
+            'has_refresh_token' => isset($token_data['refresh_token']),
+            'has_expires_in' => isset($token_data['expires_in'])
+        ]);
+        
         // Calculate expiry time
         $expires = isset($token_data['expires_in']) ? time() + $token_data['expires_in'] : time() + DAY_IN_SECONDS;
         
@@ -260,7 +505,9 @@ class FirebaseAuth {
         // Set secure cookie with token data
         $secure = is_ssl();
         $httponly = true;
-        setcookie('supafaya_api_token', $encrypted, $expires, COOKIEPATH, COOKIE_DOMAIN, $secure, $httponly);
+        $cookie_set = setcookie('supafaya_api_token', $encrypted, $expires, COOKIEPATH, COOKIE_DOMAIN, $secure, $httponly);
+        
+        $this->log_debug("Cookie set result", $cookie_set ? "success" : "failed");
     }
     
     /**
