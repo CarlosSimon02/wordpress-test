@@ -173,6 +173,18 @@ class Plugin {
             'supafaya-tickets-settings',
             'supafaya_tickets_main'
         );
+
+        add_settings_field(
+            'supafaya_event_page_url',
+            'Event Details Page URL',
+            function() {
+                $value = get_option('supafaya_event_page_url', '');
+                echo '<input type="text" name="supafaya_event_page_url" value="' . esc_attr($value) . '" class="regular-text">';
+                echo '<p class="description">Enter the full URL of your event details page. This is where users will be directed when clicking "View Details".</p>';
+            },
+            'supafaya-tickets-settings',
+            'supafaya_tickets_main'
+        );
         
         // Add Firebase settings section
         add_settings_section(
