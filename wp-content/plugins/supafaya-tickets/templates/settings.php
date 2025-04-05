@@ -68,7 +68,7 @@
                     </td>
                 </tr>
                 <tr>
-                    <td><code>[supafaya_login_form]</code></td>
+                    <td><code>[supafaya_enhanced_login_form]</code></td>
                     <td>Display a form to connect WordPress account with Supafaya</td>
                     <td>None</td>
                 </tr>

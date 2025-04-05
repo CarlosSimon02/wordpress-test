@@ -87,4 +87,20 @@ class AuthService {
         
         return false;
     }
+    
+    /**
+     * Login with Firebase in Supafaya API
+     */
+    public function loginWithFirebase($token, $user_info) {
+        $response = $this->api_client->post('/auth/firebase', [
+            'token' => $token,
+            'user_info' => $user_info
+        ]);
+        
+        if ($response['success'] && isset($response['data']['access_token'])) {
+            return $response['data'];
+        }
+        
+        return false;
+    }
 }

@@ -4,17 +4,27 @@ namespace SupafayaTickets;
 use SupafayaTickets\Controllers\AuthController;
 use SupafayaTickets\Controllers\EventController;
 use SupafayaTickets\Controllers\TicketController;
+// use SupafayaTickets\Helpers\UserDropdown;
+use SupafayaTickets\Auth\FirebaseAuth;
 
 class Plugin {
     private $auth_controller;
     private $event_controller;
     private $ticket_controller;
+    // private $user_dropdown;
+    private $firebase_auth;
     
     public function init() {
         // Initialize controllers
         $this->auth_controller = new AuthController();
         $this->event_controller = new EventController();
         $this->ticket_controller = new TicketController();
+        
+        // Initialize helpers
+        // $this->user_dropdownnew UserDropdown();
+        
+        // Initialize Firebase Auth
+        $this->firebase_auth = new FirebaseAuth();
         
         // Register assets
         add_action('wp_enqueue_scripts', [$this, 'register_assets']);
@@ -24,6 +34,9 @@ class Plugin {
         
         // Add settings
         add_action('admin_init', [$this, 'register_settings']);
+        
+        // Register shortcodes
+        add_shortcode('supafaya_firebase_login', [$this->firebase_auth, 'firebase_login_shortcode']);
     }
     
     public function register_assets() {
@@ -44,10 +57,24 @@ class Plugin {
             true
         );
         
+        // Get login URL - look for a page with our login shortcode
+        $login_url = wp_login_url();
+        $login_pages = get_posts([
+            'post_type' => 'page',
+            'posts_per_page' => 1,
+            's' => '[supafaya_firebase_login]'
+        ]);
+        
+        if (!empty($login_pages)) {
+            $login_url = get_permalink($login_pages[0]->ID);
+        }
+        
         wp_localize_script('supafaya-tickets-script', 'supafayaTickets', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('supafaya-tickets-nonce'),
-            'pluginUrl' => SUPAFAYA_PLUGIN_URL 
+            'pluginUrl' => SUPAFAYA_PLUGIN_URL,
+            'isLoggedIn' => is_user_logged_in(),
+            'loginUrl' => $login_url
         ]);
         
         // Enqueue the script whenever the shortcode is used
@@ -74,7 +101,8 @@ class Plugin {
             has_shortcode($post->post_content, 'supafaya_event') || 
             has_shortcode($post->post_content, 'supafaya_ticket_checkout') || 
             has_shortcode($post->post_content, 'supafaya_my_tickets') || 
-            has_shortcode($post->post_content, 'supafaya_login_form')
+            has_shortcode($post->post_content, 'supafaya_enhanced_login_form') ||
+            has_shortcode($post->post_content, 'supafaya_firebase_login')
         )) {
             $load_script = true;
         }
@@ -110,6 +138,11 @@ class Plugin {
         register_setting('supafaya_tickets_options', 'supafaya_organization_id');
         register_setting('supafaya_tickets_options', 'supafaya_event_page_url');
         
+        // Firebase settings
+        register_setting('supafaya_tickets_options', 'supafaya_firebase_api_key');
+        register_setting('supafaya_tickets_options', 'supafaya_firebase_auth_domain');
+        register_setting('supafaya_tickets_options', 'supafaya_firebase_project_id');
+        
         add_settings_section(
             'supafaya_tickets_main',
             'Main Settings',
@@ -141,16 +174,48 @@ class Plugin {
             'supafaya_tickets_main'
         );
         
-        add_settings_field(
-            'supafaya_event_page_url',
-            'Event Details Page URL',
+        // Add Firebase settings section
+        add_settings_section(
+            'supafaya_tickets_firebase',
+            'Firebase Authentication Settings',
             function() {
-                $value = get_option('supafaya_event_page_url', '');
-                echo '<input type="text" name="supafaya_event_page_url" value="' . esc_attr($value) . '" class="regular-text">';
-                echo '<p class="description">Enter the full URL of your event details page. This is where users will be directed when clicking "View Details".</p>';
+                echo '<p>Configure Firebase authentication settings. Get these values from your <a href="https://console.firebase.google.com/" target="_blank">Firebase Console</a>.</p>';
+            },
+            'supafaya-tickets-settings'
+        );
+        
+        add_settings_field(
+            'supafaya_firebase_api_key',
+            'Firebase API Key',
+            function() {
+                $value = get_option('supafaya_firebase_api_key', '');
+                echo '<input type="text" name="supafaya_firebase_api_key" value="' . esc_attr($value) . '" class="regular-text">';
             },
             'supafaya-tickets-settings',
-            'supafaya_tickets_main'
+            'supafaya_tickets_firebase'
+        );
+        
+        add_settings_field(
+            'supafaya_firebase_auth_domain',
+            'Firebase Auth Domain',
+            function() {
+                $value = get_option('supafaya_firebase_auth_domain', '');
+                echo '<input type="text" name="supafaya_firebase_auth_domain" value="' . esc_attr($value) . '" class="regular-text">';
+                echo '<p class="description">Example: your-app.firebaseapp.com</p>';
+            },
+            'supafaya-tickets-settings',
+            'supafaya_tickets_firebase'
+        );
+        
+        add_settings_field(
+            'supafaya_firebase_project_id',
+            'Firebase Project ID',
+            function() {
+                $value = get_option('supafaya_firebase_project_id', '');
+                echo '<input type="text" name="supafaya_firebase_project_id" value="' . esc_attr($value) . '" class="regular-text">';
+            },
+            'supafaya-tickets-settings',
+            'supafaya_tickets_firebase'
         );
     }
     

@@ -115,11 +115,31 @@
         const eventPage = $('.supafaya-event-single');
         if (eventPage.length === 0) return;
 
-        const cart = {
+        // Initialize cart from localStorage or create a new one
+        const cart = loadCartFromStorage() || {
             tickets: {},
             addons: {},
             total: 0
         };
+        
+        // Save cart to localStorage
+        function saveCartToStorage() {
+            localStorage.setItem('supafaya_cart', JSON.stringify(cart));
+        }
+        
+        // Load cart from localStorage
+        function loadCartFromStorage() {
+            const savedCart = localStorage.getItem('supafaya_cart');
+            if (savedCart) {
+                try {
+                    return JSON.parse(savedCart);
+                } catch (e) {
+                    console.error('Error parsing cart from localStorage', e);
+                    return null;
+                }
+            }
+            return null;
+        }
 
         // Handle ticket quantity changes
         $(document).on('click', '.ticket-item .quantity-decrease', function() {
@@ -207,6 +227,7 @@
             }, 1500);
 
             updateOrderSummary();
+            saveCartToStorage();
         });
 
         // Add addon to cart
@@ -260,6 +281,7 @@
             }, 1500);
 
             updateOrderSummary();
+            saveCartToStorage();
         });
 
         // Clear cart
@@ -268,10 +290,21 @@
             cart.addons = {};
             cart.total = 0;
             updateOrderSummary();
+            saveCartToStorage();
         });
 
         // Process checkout
         $(document).on('click', '.checkout-button', function() {
+            // Check if user is logged in
+            if (!supafayaTickets.isLoggedIn) {
+                // Save return URL to session storage
+                sessionStorage.setItem('supafaya_checkout_redirect', window.location.href);
+                
+                // Redirect to login page
+                window.location.href = supafayaTickets.loginUrl;
+                return;
+            }
+            
             // Prepare ticket data
             const tickets = [];
             const addons = [];
@@ -421,6 +454,7 @@
             }
             
             updateOrderSummary();
+            saveCartToStorage();
         });
 
         // Initialize with empty cart
