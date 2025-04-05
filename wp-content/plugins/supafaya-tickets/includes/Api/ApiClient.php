@@ -16,38 +16,44 @@ class ApiClient {
     public function request($endpoint, $method = 'GET', $data = null, $headers = []) {
         $url = $this->api_url . $endpoint;
         
+        // Initialize headers as associative array
         $default_headers = [
             'Content-Type' => 'application/json',
             'Accept' => 'application/json'
         ];
         
-        if ($this->token) {
-            $default_headers['Authorization'] = 'Bearer ' . $this->token;
+        // Only add token if it exists and is not empty
+        if (!empty($this->token)) {
+            $default_headers['x-access-token'] = (string)$this->token;
+            error_log('Sending request with token: ' . substr($this->token, 0, 10) . '...'); // Log first 10 chars for security
+        } else {
+            error_log('No token available for this request');
         }
         
+        // Merge headers preserving the associative array format
         $headers = array_merge($default_headers, $headers);
-        $header_strings = [];
-        
-        foreach ($headers as $key => $value) {
-            $header_strings[] = $key . ': ' . $value;
-        }
         
         $args = [
             'method' => $method,
             'timeout' => 30,
             'redirection' => 5,
             'httpversion' => '1.1',
-            'headers' => $header_strings,
-            'sslverify' => false
+            'headers' => $headers, // Keep as associative array
+            'sslverify' => false,
+            'blocking' => true
         ];
         
         if ($data && in_array($method, ['POST', 'PUT', 'PATCH'])) {
             $args['body'] = json_encode($data);
+            error_log('Request body: ' . print_r($data, true));
         }
+        
+        error_log('Final request headers: ' . print_r($headers, true));
         
         $response = wp_remote_request($url, $args);
         
         if (is_wp_error($response)) {
+            error_log('API request failed: ' . $response->get_error_message());
             return [
                 'success' => false,
                 'message' => $response->get_error_message()
@@ -56,6 +62,9 @@ class ApiClient {
         
         $body = wp_remote_retrieve_body($response);
         $status = wp_remote_retrieve_response_code($response);
+        
+        error_log('API response status: ' . $status);
+        error_log('API response body: ' . $body);
         
         return [
             'success' => $status >= 200 && $status < 300,
