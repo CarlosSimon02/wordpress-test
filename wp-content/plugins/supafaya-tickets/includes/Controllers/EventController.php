@@ -227,8 +227,19 @@ class EventController
    * AJAX handler for getting user's purchased items for an event
    */
   public function ajax_get_user_items() {
+    // Debug logging function
+    $debug_log = function($message, $data = null) {
+      error_log(sprintf('[Supafaya Debug %s] %s', date('Y-m-d H:i:s'), $message));
+      if ($data !== null) {
+        error_log('Data: ' . print_r($data, true));
+      }
+    };
+
+    $debug_log('Starting ajax_get_user_items request');
+
     // Verify nonce
     if (!isset($_GET['nonce']) || !wp_verify_nonce($_GET['nonce'], 'supafaya-tickets-nonce')) {
+      $debug_log('Nonce verification failed', $_GET);
       wp_send_json([
         'success' => false,
         'message' => 'Security verification failed'
@@ -238,7 +249,10 @@ class EventController
 
     // Get event ID
     $event_id = sanitize_text_field($_GET['event_id'] ?? '');
+    $debug_log('Event ID received', $event_id);
+
     if (empty($event_id)) {
+      $debug_log('Error: Event ID is required');
       wp_send_json([
         'success' => false,
         'message' => 'Event ID is required'
@@ -249,8 +263,13 @@ class EventController
     // Get Firebase token from request
     $headers = function_exists('getallheaders') ? getallheaders() : [];
     $firebase_token = isset($headers['X-Firebase-Token']) ? $headers['X-Firebase-Token'] : null;
+    $debug_log('Firebase token received', [
+      'has_token' => !empty($firebase_token),
+      'token_length' => $firebase_token ? strlen($firebase_token) : 0
+    ]);
 
     if (!$firebase_token) {
+      $debug_log('Error: No Firebase token provided');
       wp_send_json([
         'success' => false,
         'message' => 'Authentication required'
@@ -260,11 +279,20 @@ class EventController
 
     // Set the Firebase token for API requests
     $this->api_client->setToken($firebase_token);
+    $debug_log('Firebase token set in API client');
 
     // Make API request to get user items
-    $response = $this->api_client->get('/events/' . $event_id . '/user-items');
+    $api_url = '/events/' . $event_id . '/user-items';
+    $debug_log('Making API request', ['url' => $api_url]);
+    
+    $response = $this->api_client->get($api_url);
+    $debug_log('API response received', $response);
 
     if (!$response['success']) {
+      $debug_log('API request failed', [
+        'message' => $response['message'] ?? 'Unknown error',
+        'response' => $response
+      ]);
       wp_send_json([
         'success' => false,
         'message' => $response['message'] ?? 'Failed to fetch user items'
@@ -272,23 +300,83 @@ class EventController
       return;
     }
 
-    // Format the response data
-    $items = array_map(function($item) {
-      return [
-        'id' => $item['id'] ?? '',
-        'name' => $item['name'] ?? '',
-        'description' => $item['description'] ?? '',
-        'price' => $item['price'] ?? 0,
-        'type' => $item['type'] ?? 'ticket',
-        'quantity' => $item['quantity'] ?? 1,
-        'purchase_date' => $item['purchase_date'] ?? '',
-        'status' => $item['status'] ?? 'active'
+    // Get tickets and addons from the response
+    $responseData = $response['data']['data'] ?? [];
+    $tickets = $responseData['tickets'] ?? [];
+    $addons = $responseData['addons'] ?? [];
+    
+    $debug_log('Response data structure', [
+      'has_tickets' => !empty($tickets),
+      'tickets_count' => count($tickets),
+      'has_addons' => !empty($addons),
+      'addons_count' => count($addons),
+      'response_structure' => array_keys($responseData)
+    ]);
+
+    // Format tickets for display
+    $formatted_items = [];
+    
+    // Process tickets
+    foreach ($tickets as $ticket) {
+      $formatted_items[] = [
+        'id' => $ticket['id'] ?? '',
+        'name' => $ticket['ticket_type'] ?? 'Ticket',
+        'description' => 'Purchased: ' . date('M j, Y', strtotime($ticket['purchased_date'] ?? 'now')),
+        'price' => 0, // Price is not directly in the ticket object
+        'type' => 'ticket',
+        'quantity' => $ticket['quantity'] ?? 1,
+        'purchase_date' => $ticket['purchased_date'] ?? '',
+        'status' => $ticket['status'] ?? 'active',
+        'qr_code' => $ticket['qr_code'] ?? '',
+        'ticket_ref' => $ticket['ticket_ref'] ?? '',
+        'valid_until' => $ticket['valid_until'] ?? '',
+        'ticket_id' => $ticket['ticket_id'] ?? '',
+        'email' => $ticket['email'] ?? ''
       ];
-    }, $response['data']['data'] ?? []);
+      
+      // Process ticket addons if any
+      if (!empty($ticket['addons'])) {
+        foreach ($ticket['addons'] as $addon) {
+          $formatted_items[] = [
+            'id' => $addon['addonId'] ?? '',
+            'name' => 'Addon for ticket ' . ($ticket['ticket_ref'] ?? ''),
+            'description' => 'Add-on item',
+            'price' => $addon['price'] ?? 0,
+            'type' => 'addon',
+            'quantity' => $addon['quantity'] ?? 1,
+            'purchase_date' => $ticket['purchased_date'] ?? '', // Use ticket purchase date for addon
+            'status' => $addon['status'] ?? 'active',
+            'refunded' => $addon['refunded'] ?? false,
+            'parent_ticket_id' => $ticket['id'] ?? ''
+          ];
+        }
+      }
+    }
+    
+    // Process standalone addons if any
+    foreach ($addons as $addon) {
+      $formatted_items[] = [
+        'id' => $addon['id'] ?? $addon['addonId'] ?? '',
+        'name' => 'Add-on Item ' . ($addon['addon_ref'] ?? ''),
+        'description' => 'Standalone add-on item',
+        'price' => $addon['price'] ?? 0,
+        'type' => 'addon',
+        'quantity' => $addon['quantity'] ?? 1,
+        'purchase_date' => $addon['created_at'] ?? '',
+        'status' => $addon['status'] ?? 'active',
+        'refunded' => $addon['refunded'] ?? false,
+        'addon_ref' => $addon['addon_ref'] ?? ''
+      ];
+    }
+
+    $debug_log('Formatted items', [
+      'item_count' => count($formatted_items),
+      'items' => $formatted_items
+    ]);
 
     wp_send_json([
       'success' => true,
-      'data' => $items
+      'data' => $formatted_items
     ]);
   }
 }

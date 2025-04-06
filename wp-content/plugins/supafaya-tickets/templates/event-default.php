@@ -511,16 +511,86 @@
         height: 40px;
     }
 }
+
+/* New styles */
+.item-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    background-color: #f0f0f0;
+    color: #666;
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+
+.item-badge.refunded {
+    background-color: #ffdddd;
+    color: #d32f2f;
+}
+
+.addon-item {
+    margin-left: 20px;
+    background-color: #f5f9ff;
+    border-left: 2px solid #4285f4;
+}
+
+.qr-button {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 4px 10px;
+    background-color: #4285f4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.qr-button:hover {
+    background-color: #3367d6;
+}
+
+.qr-container {
+    margin-top: 8px;
+    text-align: center;
+}
+
+.qr-code img {
+    width: 150px;
+    height: 150px;
+    margin: 0 auto;
+    display: block;
+}
+
+.item-valid-until {
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
+}
 </style>
 
 <script>
 (function($) {
+    // Debug logging function
+    function debugLog(message, data = null) {
+        const timestamp = new Date().toISOString();
+        const logMessage = `[Supafaya Debug ${timestamp}] ${message}`;
+        console.log(logMessage);
+        if (data) {
+            console.log('Data:', data);
+        }
+    }
+
     // Get current event ID from URL
     const urlParams = new URLSearchParams(window.location.search);
     const currentEventId = urlParams.get('event_id');
     
+    debugLog('Initializing purchased items dialog', { currentEventId });
+    
     if (!currentEventId) {
-        console.error('Event ID not found in URL');
+        debugLog('Error: Event ID not found in URL');
         return;
     }
 
@@ -541,8 +611,17 @@
 
     // Open dialog
     purchasedItemsButton.on('click', function() {
+        debugLog('Purchased items button clicked');
+        
         // Check if user is logged in
-        if (!firebase.auth().currentUser) {
+        const currentUser = firebase.auth().currentUser;
+        debugLog('Firebase auth state', { 
+            isLoggedIn: !!currentUser,
+            userId: currentUser?.uid 
+        });
+
+        if (!currentUser) {
+            debugLog('User not logged in, redirecting to login page');
             // Save the current URL to redirect back after login
             document.cookie = 'supafaya_checkout_redirect=' + window.location.href + '; path=/; max-age=3600';
             
@@ -558,9 +637,17 @@
         emptyState.hide();
         contentState.hide();
 
+        debugLog('Fetching Firebase token');
         // Get Firebase token
-        firebase.auth().currentUser.getIdToken(true).then(function(token) {
+        currentUser.getIdToken(true).then(function(token) {
+            debugLog('Firebase token obtained', { tokenLength: token.length });
+            
             // Make API request
+            debugLog('Making API request for user items', {
+                eventId: currentEventId,
+                ajaxUrl: supafayaTickets.ajaxUrl
+            });
+
             $.ajax({
                 url: supafayaTickets.ajaxUrl,
                 method: 'GET',
@@ -573,10 +660,15 @@
                     'X-Firebase-Token': token
                 },
                 success: function(response) {
+                    debugLog('API response received', response);
                     loadingState.hide();
                     
                     if (response.success) {
                         const items = response.data;
+                        debugLog('Items retrieved', { 
+                            itemCount: items?.length || 0,
+                            items: items 
+                        });
                         
                         if (items && items.length > 0) {
                             // Show items
@@ -585,20 +677,31 @@
                         } else {
                             // Show empty state
                             emptyState.show();
+                            debugLog('No items found for user');
                         }
                     } else {
                         // Show error state
                         errorState.show();
                         errorMessage.text(response.message || 'Failed to load purchased items');
+                        debugLog('API request failed', { 
+                            message: response.message,
+                            response: response 
+                        });
                     }
                 },
                 error: function(xhr, status, error) {
+                    debugLog('AJAX error', { 
+                        status: status,
+                        error: error,
+                        response: xhr.responseText
+                    });
                     loadingState.hide();
                     errorState.show();
                     errorMessage.text('Failed to load purchased items. Please try again.');
                 }
             });
         }).catch(function(error) {
+            debugLog('Firebase token error', error);
             loadingState.hide();
             errorState.show();
             errorMessage.text('Authentication error. Please try logging in again.');
@@ -607,6 +710,7 @@
 
     // Close dialog
     function closeDialog() {
+        debugLog('Closing dialog');
         dialog.hide();
     }
 
@@ -622,9 +726,11 @@
 
     // Render purchased items
     function renderItems(items) {
+        debugLog('Rendering items', { itemCount: items.length });
         purchasedItemsList.empty();
 
-        items.forEach(function(item) {
+        items.forEach(function(item, index) {
+            debugLog(`Rendering item ${index + 1}`, item);
             const itemElement = $('<div class="purchased-item">');
             
             // Item icon
@@ -633,22 +739,100 @@
             
             // Item details
             const details = $('<div class="item-details">');
+            
+            // Add badge if refunded
+            if (item.refunded) {
+                details.append($('<span class="item-badge refunded">').text('Refunded'));
+            } else if (item.status && item.status.toLowerCase() !== 'active') {
+                details.append($('<span class="item-badge">').text(item.status));
+            }
+            
+            // Item name and description
             details.append($('<div class="item-name">').text(item.name));
-            details.append($('<div class="item-meta">').text(item.description || ''));
+            
+            // Item meta information
+            const metaInfo = [];
+            
+            // Add description
+            if (item.description) {
+                metaInfo.push(item.description);
+            }
+            
+            // Add purchase date if available
+            if (item.purchase_date) {
+                const purchaseDate = new Date(item.purchase_date);
+                if (!isNaN(purchaseDate.getTime())) {
+                    metaInfo.push('Purchased: ' + purchaseDate.toLocaleDateString());
+                }
+            }
+            
+            // Add quantity if more than 1
+            if (item.quantity > 1) {
+                metaInfo.push(`Quantity: ${item.quantity}`);
+            }
+            
+            // Add reference codes
+            if (item.type === 'ticket' && item.ticket_ref) {
+                metaInfo.push(`Ref: ${item.ticket_ref}`);
+            } else if (item.type === 'addon' && item.addon_ref) {
+                metaInfo.push(`Ref: ${item.addon_ref}`);
+            }
+            
+            // Add ticket ID for QR code display
+            if (item.type === 'ticket' && item.qr_code) {
+                // Create a container for QR code that will be shown on click
+                const qrContainer = $('<div class="qr-container">').hide();
+                const qrCode = $('<div class="qr-code">');
+                qrCode.append($('<img>').attr('src', item.qr_code).attr('alt', 'Ticket QR Code'));
+                qrContainer.append(qrCode);
+                
+                // Create button to show QR code
+                const qrButton = $('<button class="qr-button">').text('Show QR Code');
+                qrButton.on('click', function(e) {
+                    e.preventDefault();
+                    qrContainer.toggle();
+                    $(this).text(qrContainer.is(':visible') ? 'Hide QR Code' : 'Show QR Code');
+                });
+                
+                details.append(qrButton);
+                details.append(qrContainer);
+            }
+            
+            // Add all meta info
+            if (metaInfo.length > 0) {
+                details.append($('<div class="item-meta">').text(metaInfo.join(' • ')));
+            }
             
             // Item price
-            const price = $('<div class="item-price">').text('₱' + parseFloat(item.price).toFixed(2));
+            const price = $('<div class="item-price">');
+            if (item.price > 0) {
+                price.text('₱' + parseFloat(item.price).toFixed(2));
+            } else {
+                price.text('Free');
+            }
+            
+            // Add valid until for tickets
+            if (item.type === 'ticket' && item.valid_until) {
+                details.append($('<div class="item-valid-until">').text('Valid until: ' + new Date(item.valid_until).toLocaleDateString()));
+            }
             
             // Assemble item
             itemElement.append(icon, details, price);
+            
+            // Add a class if this item is an addon
+            if (item.type === 'addon') {
+                itemElement.addClass('addon-item');
+            }
+            
             purchasedItemsList.append(itemElement);
         });
     }
 
     // Get appropriate icon based on item type
     function getItemIcon(type) {
+        debugLog('Getting icon for item type', { type });
         const icons = {
-            'ticket': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>',
+            'ticket': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9V5c0-1.1.9-2 2-2h16a2 2 0 0 1 2 2v4"></path><path d="M2 15v4c0 1.1.9 2 2 2h16a2 2 0 0 0 2-2v-4"></path><path d="M4 9h16"></path><path d="M4 15h16"></path></svg>',
             'addon': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>'
         };
         
