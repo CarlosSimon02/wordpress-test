@@ -25,6 +25,8 @@ class EventController
     // Register AJAX handlers
     add_action('wp_ajax_supafaya_load_events', [$this, 'ajax_load_events']);
     add_action('wp_ajax_nopriv_supafaya_load_events', [$this, 'ajax_load_events']);
+    add_action('wp_ajax_supafaya_get_user_items', [$this, 'ajax_get_user_items']);
+    add_action('wp_ajax_nopriv_supafaya_get_user_items', [$this, 'ajax_get_user_items']);
 
     // Register REST API endpoints
     add_action('rest_api_init', [$this, 'register_rest_routes']);
@@ -219,5 +221,74 @@ class EventController
     }
 
     return rest_ensure_response($response['data']);
+  }
+
+  /**
+   * AJAX handler for getting user's purchased items for an event
+   */
+  public function ajax_get_user_items() {
+    // Verify nonce
+    if (!isset($_GET['nonce']) || !wp_verify_nonce($_GET['nonce'], 'supafaya-tickets-nonce')) {
+      wp_send_json([
+        'success' => false,
+        'message' => 'Security verification failed'
+      ]);
+      return;
+    }
+
+    // Get event ID
+    $event_id = sanitize_text_field($_GET['event_id'] ?? '');
+    if (empty($event_id)) {
+      wp_send_json([
+        'success' => false,
+        'message' => 'Event ID is required'
+      ]);
+      return;
+    }
+
+    // Get Firebase token from request
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
+    $firebase_token = isset($headers['X-Firebase-Token']) ? $headers['X-Firebase-Token'] : null;
+
+    if (!$firebase_token) {
+      wp_send_json([
+        'success' => false,
+        'message' => 'Authentication required'
+      ]);
+      return;
+    }
+
+    // Set the Firebase token for API requests
+    $this->api_client->setToken($firebase_token);
+
+    // Make API request to get user items
+    $response = $this->api_client->get('/events/' . $event_id . '/user-items');
+
+    if (!$response['success']) {
+      wp_send_json([
+        'success' => false,
+        'message' => $response['message'] ?? 'Failed to fetch user items'
+      ]);
+      return;
+    }
+
+    // Format the response data
+    $items = array_map(function($item) {
+      return [
+        'id' => $item['id'] ?? '',
+        'name' => $item['name'] ?? '',
+        'description' => $item['description'] ?? '',
+        'price' => $item['price'] ?? 0,
+        'type' => $item['type'] ?? 'ticket',
+        'quantity' => $item['quantity'] ?? 1,
+        'purchase_date' => $item['purchase_date'] ?? '',
+        'status' => $item['status'] ?? 'active'
+      ];
+    }, $response['data']['data'] ?? []);
+
+    wp_send_json([
+      'success' => true,
+      'data' => $items
+    ]);
   }
 }

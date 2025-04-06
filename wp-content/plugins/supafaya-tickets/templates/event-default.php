@@ -211,3 +211,449 @@
     </div>
 </div>
 
+<!-- Purchased Items Button and Dialog -->
+<div class="purchased-items-container">
+    <button class="purchased-items-button">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        My Purchased Items
+    </button>
+
+    <!-- Dialog -->
+    <div class="purchased-items-dialog" style="display: none;">
+        <div class="dialog-overlay"></div>
+        <div class="dialog-content">
+            <div class="dialog-header">
+                <h2>My Purchased Items</h2>
+                <button class="dialog-close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="dialog-body">
+                <!-- Loading State -->
+                <div class="loading-state" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    <p>Loading your purchased items...</p>
+                </div>
+
+                <!-- Error State -->
+                <div class="error-state" style="display: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <p class="error-message"></p>
+                </div>
+
+                <!-- Empty State -->
+                <div class="empty-state" style="display: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <p>No purchased items found for this event.</p>
+                </div>
+
+                <!-- Content State -->
+                <div class="content-state" style="display: none;">
+                    <div class="purchased-items-list">
+                        <!-- Items will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Purchased Items Button Styles */
+.purchased-items-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+.purchased-items-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background-color: #4285f4;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+}
+
+.purchased-items-button:hover {
+    background-color: #3367d6;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.purchased-items-button svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Dialog Styles */
+.purchased-items-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dialog-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.dialog-content {
+    position: relative;
+    background-color: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+}
+
+.dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.dialog-header h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+}
+
+.dialog-close {
+    background: none;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    color: #666;
+    transition: color 0.3s ease;
+}
+
+.dialog-close:hover {
+    color: #333;
+}
+
+.dialog-body {
+    padding: 20px;
+}
+
+/* Loading State */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+    color: #666;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #4285f4;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Error State */
+.error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+    color: #dc3545;
+}
+
+.error-state svg {
+    margin-bottom: 16px;
+}
+
+.error-message {
+    margin: 0;
+    font-size: 16px;
+}
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+    color: #666;
+}
+
+.empty-state svg {
+    margin-bottom: 16px;
+}
+
+/* Content State */
+.purchased-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.purchased-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    transition: background-color 0.3s ease;
+}
+
+.purchased-item:hover {
+    background-color: #f1f3f5;
+}
+
+.item-icon {
+    width: 48px;
+    height: 48px;
+    background-color: #e8f0fe;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4285f4;
+}
+
+.item-details {
+    flex: 1;
+}
+
+.item-name {
+    font-weight: 500;
+    color: #333;
+    margin: 0 0 4px 0;
+}
+
+.item-meta {
+    font-size: 14px;
+    color: #666;
+}
+
+.item-price {
+    font-weight: 600;
+    color: #4285f4;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .purchased-items-button {
+        padding: 10px 16px;
+        font-size: 13px;
+    }
+
+    .dialog-content {
+        width: 95%;
+        margin: 20px;
+    }
+
+    .purchased-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .item-icon {
+        width: 40px;
+        height: 40px;
+    }
+}
+</style>
+
+<script>
+(function($) {
+    // Get current event ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentEventId = urlParams.get('event_id');
+    
+    if (!currentEventId) {
+        console.error('Event ID not found in URL');
+        return;
+    }
+
+    // Dialog elements
+    const dialog = $('.purchased-items-dialog');
+    const dialogContent = $('.dialog-content');
+    const dialogClose = $('.dialog-close');
+    const dialogOverlay = $('.dialog-overlay');
+    const purchasedItemsButton = $('.purchased-items-button');
+    
+    // State elements
+    const loadingState = $('.loading-state');
+    const errorState = $('.error-state');
+    const emptyState = $('.empty-state');
+    const contentState = $('.content-state');
+    const purchasedItemsList = $('.purchased-items-list');
+    const errorMessage = $('.error-message');
+
+    // Open dialog
+    purchasedItemsButton.on('click', function() {
+        // Check if user is logged in
+        if (!firebase.auth().currentUser) {
+            // Save the current URL to redirect back after login
+            document.cookie = 'supafaya_checkout_redirect=' + window.location.href + '; path=/; max-age=3600';
+            
+            // Redirect to login page
+            window.location.href = supafayaTickets.loginUrl;
+            return;
+        }
+
+        // Show dialog and loading state
+        dialog.show();
+        loadingState.show();
+        errorState.hide();
+        emptyState.hide();
+        contentState.hide();
+
+        // Get Firebase token
+        firebase.auth().currentUser.getIdToken(true).then(function(token) {
+            // Make API request
+            $.ajax({
+                url: supafayaTickets.ajaxUrl,
+                method: 'GET',
+                data: {
+                    action: 'supafaya_get_user_items',
+                    event_id: currentEventId,
+                    nonce: supafayaTickets.nonce
+                },
+                headers: {
+                    'X-Firebase-Token': token
+                },
+                success: function(response) {
+                    loadingState.hide();
+                    
+                    if (response.success) {
+                        const items = response.data;
+                        
+                        if (items && items.length > 0) {
+                            // Show items
+                            contentState.show();
+                            renderItems(items);
+                        } else {
+                            // Show empty state
+                            emptyState.show();
+                        }
+                    } else {
+                        // Show error state
+                        errorState.show();
+                        errorMessage.text(response.message || 'Failed to load purchased items');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    loadingState.hide();
+                    errorState.show();
+                    errorMessage.text('Failed to load purchased items. Please try again.');
+                }
+            });
+        }).catch(function(error) {
+            loadingState.hide();
+            errorState.show();
+            errorMessage.text('Authentication error. Please try logging in again.');
+        });
+    });
+
+    // Close dialog
+    function closeDialog() {
+        dialog.hide();
+    }
+
+    dialogClose.on('click', closeDialog);
+    dialogOverlay.on('click', closeDialog);
+
+    // Close on escape key
+    $(document).on('keydown', function(e) {
+        if (e.key === 'Escape' && dialog.is(':visible')) {
+            closeDialog();
+        }
+    });
+
+    // Render purchased items
+    function renderItems(items) {
+        purchasedItemsList.empty();
+
+        items.forEach(function(item) {
+            const itemElement = $('<div class="purchased-item">');
+            
+            // Item icon
+            const icon = $('<div class="item-icon">');
+            icon.html(getItemIcon(item.type));
+            
+            // Item details
+            const details = $('<div class="item-details">');
+            details.append($('<div class="item-name">').text(item.name));
+            details.append($('<div class="item-meta">').text(item.description || ''));
+            
+            // Item price
+            const price = $('<div class="item-price">').text('₱' + parseFloat(item.price).toFixed(2));
+            
+            // Assemble item
+            itemElement.append(icon, details, price);
+            purchasedItemsList.append(itemElement);
+        });
+    }
+
+    // Get appropriate icon based on item type
+    function getItemIcon(type) {
+        const icons = {
+            'ticket': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>',
+            'addon': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>'
+        };
+        
+        return icons[type] || icons.ticket;
+    }
+})(jQuery);
+</script>
+
