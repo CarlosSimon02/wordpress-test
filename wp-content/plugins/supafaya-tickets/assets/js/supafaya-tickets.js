@@ -463,7 +463,18 @@
                     phone: phoneNumber,
                     email: userEmail,
                     name: userName,
-                    firebase_token: firebaseToken
+                    firebase_token: firebaseToken,
+                    payment_redirect_urls: {
+                        success: supafayaTickets.paymentResultUrl ? 
+                            (window.location.protocol + '//' + window.location.host + supafayaTickets.paymentResultUrl + 
+                            (supafayaTickets.paymentResultUrl.includes('?') ? '&' : '?') + 
+                            'status=success&event_id=' + currentEventId) : '',
+                        failed: supafayaTickets.paymentResultUrl ? 
+                            (window.location.protocol + '//' + window.location.host + supafayaTickets.paymentResultUrl + 
+                            (supafayaTickets.paymentResultUrl.includes('?') ? '&' : '?') + 
+                            'status=failed&event_id=' + currentEventId) : '',
+                        cancel: window.location.href
+                    }
                 },
                 success: function(response) {
                     // Re-enable checkout button
@@ -478,13 +489,30 @@
                         };
                         saveCartsToStorage();
                         
-                        // If there's a redirect URL in the response, go there
+                        // If there's a checkout URL in the response, go there
                         if (response.data && response.data.checkoutUrl) {
+                            // Store the event ID in sessionStorage
+                            sessionStorage.setItem('supafaya_checkout_event_id', currentEventId);
+                            if (response.data.id) {
+                                sessionStorage.setItem('supafaya_transaction_id', response.data.id);
+                            }
+                            
+                            // Redirect to the checkout URL (no need to modify it)
                             window.location.href = response.data.checkoutUrl;
                             return;
                         }
                         
-                        // Otherwise show success message (this would happen for free tickets)
+                        // For free tickets or immediate success (no payment required)
+                        // Redirect to success page
+                        if (supafayaTickets.paymentResultUrl) {
+                            const successUrl = supafayaTickets.paymentResultUrl + (supafayaTickets.paymentResultUrl.includes('?') ? '&' : '?') + 
+                                'status=success&event_id=' + currentEventId + 
+                                (response.data.id ? '&transaction_id=' + response.data.id : '');
+                            window.location.href = successUrl;
+                            return;
+                        }
+                        
+                        // Fallback success message if no redirect URL is configured
                         $('.event-right-column').html(`
                             <div class="checkout-success">
                                 <h3>Thank you for your purchase!</h3>
@@ -494,7 +522,16 @@
                             </div>
                         `);
                     } else {
-                        // Show error message
+                        // For payment failure
+                        if (supafayaTickets.paymentResultUrl) {
+                            const failureUrl = supafayaTickets.paymentResultUrl + (supafayaTickets.paymentResultUrl.includes('?') ? '&' : '?') + 
+                                'status=failed&event_id=' + currentEventId + 
+                                (response.data && response.data.id ? '&transaction_id=' + response.data.id : '');
+                            window.location.href = failureUrl;
+                            return;
+                        }
+                        
+                        // Fallback error message
                         alert('Error: ' + (response.message || 'An error occurred'));
                     }
                 },
@@ -502,6 +539,16 @@
                     // Re-enable checkout button
                     $('.checkout-button').prop('disabled', false).text('Proceed to Checkout');
                     console.error('AJAX Error:', xhr.responseText);
+                    
+                    // Redirect to failure page if available
+                    if (supafayaTickets.paymentResultUrl) {
+                        const failureUrl = supafayaTickets.paymentResultUrl + (supafayaTickets.paymentResultUrl.includes('?') ? '&' : '?') + 
+                            'status=failed&event_id=' + currentEventId;
+                        window.location.href = failureUrl;
+                        return;
+                    }
+                    
+                    // Fallback alert
                     alert('A network error occurred. Please try again.');
                 }
             });

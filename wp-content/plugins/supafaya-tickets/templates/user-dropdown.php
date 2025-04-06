@@ -9,8 +9,13 @@ $firebase_auth_domain = get_option('supafaya_firebase_auth_domain', '');
 $firebase_project_id = get_option('supafaya_firebase_project_id', '');
 ?>
 <div class="supafaya-user-dropdown">
+    <!-- Debug message - remove in production -->
+    <div class="debug-message" style="display: none;">
+        Waiting for Firebase auth state...
+    </div>
+    
     <!-- Login button (shown when logged out) -->
-    <div class="auth-logged-out">
+    <div class="auth-logged-out" style="display: none;">
         <a href="<?php echo esc_url($login_url); ?>" class="<?php echo esc_attr($atts['button_class']); ?>">
             <?php echo esc_html($atts['button_text']); ?>
         </a>
@@ -34,107 +39,118 @@ $firebase_project_id = get_option('supafaya_firebase_project_id', '');
     </div>
 </div>
 
-<!-- Embed Firebase libraries directly if they're not already loaded -->
-<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
-
 <script>
-(function() {
-    // Check if supafayaFirebase is already defined from wp_localize_script
-    if (typeof window.supafayaFirebase === 'undefined') {
-        // Create a local configuration
-        window.supafayaFirebase = {
-            apiKey: "<?php echo esc_js($firebase_api_key); ?>",
-            authDomain: "<?php echo esc_js($firebase_auth_domain); ?>",
-            projectId: "<?php echo esc_js($firebase_project_id); ?>",
-            ajaxUrl: "<?php echo esc_js(admin_url('admin-ajax.php')); ?>",
-            nonce: "<?php echo esc_js(wp_create_nonce('supafaya-firebase-nonce')); ?>",
-            redirectUrl: "<?php echo esc_js(home_url()); ?>",
-            profileUrl: "<?php echo esc_js($profile_url); ?>",
-            siteUrl: "<?php echo esc_js(site_url()); ?>"
-        };
-    }
+document.addEventListener('DOMContentLoaded', function() {
+    // Show debug message initially
+    document.querySelector('.supafaya-user-dropdown .debug-message').style.display = 'block';
     
-    // Initialize Firebase if not already initialized
-    var firebaseApp;
-    try {
-        if (typeof firebase === 'undefined' || !firebase.apps.length) {
-            const firebaseConfig = {
-                apiKey: window.supafayaFirebase.apiKey,
-                authDomain: window.supafayaFirebase.authDomain,
-                projectId: window.supafayaFirebase.projectId
-            };
-            firebaseApp = firebase.initializeApp(firebaseConfig);
-        } else {
-            firebaseApp = firebase.app();
+    // Function to initialize Firebase auth listener
+    function initializeAuthListener() {
+        // Check if Firebase has been loaded
+        if (typeof firebase === 'undefined') {
+            console.error('Firebase not loaded. Make sure Firebase scripts are included.');
+            setTimeout(initializeAuthListener, 500);
+            return;
         }
         
-        // Set up auth state listener
-        firebase.auth().onAuthStateChanged(function(user) {
-            if (user) {
-                // User is signed in
-                document.querySelector('.auth-logged-in').style.display = 'block';
-                document.querySelector('.auth-logged-out').style.display = 'none';
-                
-                // Set user name
-                var userNameElement = document.querySelector('#user-name');
-                if (userNameElement) {
-                    userNameElement.textContent = user.displayName || user.email.split('@')[0];
-                }
-                
-                // Set avatar
-                var avatarImg = document.querySelector('#user-avatar-img');
-                var initials = document.querySelector('#user-initials');
-                
-                if (user.photoURL) {
-                    avatarImg.src = user.photoURL;
-                    avatarImg.style.display = 'block';
-                    initials.style.display = 'none';
-                } else {
-                    avatarImg.style.display = 'none';
-                    initials.textContent = user.displayName ? 
-                        user.displayName.split(' ').map(n => n[0]).join('') : 
-                        user.email[0].toUpperCase();
-                    initials.style.display = 'block';
-                }
+        // Check if Firebase auth is available
+        if (!firebase.auth) {
+            console.error('Firebase Auth not loaded. Make sure Firebase Auth script is included.');
+            setTimeout(initializeAuthListener, 500);
+            return;
+        }
+        
+        // Hide debug message
+        document.querySelector('.supafaya-user-dropdown .debug-message').style.display = 'none';
+        
+        // Firebase is loaded, initialize if needed
+        var firebaseApp;
+        try {
+            if (!firebase.apps.length) {
+                // Ensure we have proper configuration
+                const firebaseConfig = {
+                    apiKey: "<?php echo esc_js($firebase_api_key); ?>",
+                    authDomain: "<?php echo esc_js($firebase_auth_domain); ?>",
+                    projectId: "<?php echo esc_js($firebase_project_id); ?>"
+                };
+                firebaseApp = firebase.initializeApp(firebaseConfig);
             } else {
-                // User is signed out
-                document.querySelector('.auth-logged-in').style.display = 'none';
-                document.querySelector('.auth-logged-out').style.display = 'block';
+                firebaseApp = firebase.app();
             }
-        });
-        
-        // Handle dropdown toggle
-        document.addEventListener('click', function(e) {
-            var toggleElement = e.target.closest('.user-dropdown-toggle');
-            if (toggleElement) {
-                e.preventDefault();
-                e.stopPropagation();
-                document.querySelector('.supafaya-user-dropdown').classList.toggle('open');
-            } else if (!e.target.closest('.supafaya-user-dropdown')) {
-                // Close dropdown when clicking outside
-                document.querySelector('.supafaya-user-dropdown').classList.remove('open');
-            }
-        });
-        
-        // Handle logout
-        document.addEventListener('click', function(e) {
-            var logoutBtn = e.target.closest('.firebase-logout-button');
-            if (logoutBtn) {
-                e.preventDefault();
-                
+            
+            // Set up auth state listener
+            firebase.auth().onAuthStateChanged(function(user) {
+                if (user) {
+                    // User is signed in
+                    document.querySelector('.auth-logged-in').style.display = 'block';
+                    document.querySelector('.auth-logged-out').style.display = 'none';
+                    
+                    // Set user name
+                    var userNameElement = document.querySelector('#user-name');
+                    if (userNameElement) {
+                        userNameElement.textContent = user.displayName || user.email.split('@')[0];
+                    }
+                    
+                    // Set avatar
+                    var avatarImg = document.querySelector('#user-avatar-img');
+                    var initials = document.querySelector('#user-initials');
+                    
+                    if (user.photoURL) {
+                        avatarImg.src = user.photoURL;
+                        avatarImg.style.display = 'block';
+                        initials.style.display = 'none';
+                    } else {
+                        avatarImg.style.display = 'none';
+                        initials.textContent = user.displayName ? 
+                            user.displayName.split(' ').map(n => n[0]).join('') : 
+                            user.email[0].toUpperCase();
+                        initials.style.display = 'block';
+                    }
+                } else {
+                    // User is signed out
+                    document.querySelector('.auth-logged-in').style.display = 'none';
+                    document.querySelector('.auth-logged-out').style.display = 'block';
+                }
+            });
+            
+        } catch (error) {
+            console.error('Firebase initialization error:', error);
+            document.querySelector('.auth-logged-out').style.display = 'block';
+        }
+    }
+    
+    // Start the initialization process
+    initializeAuthListener();
+    
+    // Handle dropdown toggle
+    document.addEventListener('click', function(e) {
+        var toggleElement = e.target.closest('.user-dropdown-toggle');
+        if (toggleElement) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.querySelector('.supafaya-user-dropdown').classList.toggle('open');
+        } else if (!e.target.closest('.supafaya-user-dropdown')) {
+            // Close dropdown when clicking outside
+            document.querySelector('.supafaya-user-dropdown').classList.remove('open');
+        }
+    });
+    
+    // Handle logout
+    document.addEventListener('click', function(e) {
+        var logoutBtn = e.target.closest('.firebase-logout-button');
+        if (logoutBtn) {
+            e.preventDefault();
+            
+            if (typeof firebase !== 'undefined' && firebase.auth) {
                 firebase.auth().signOut().then(function() {
                     window.location.href = "<?php echo esc_js(home_url()); ?>";
                 }).catch(function(error) {
                     console.error('Sign out error:', error);
                 });
             }
-        });
-        
-    } catch (error) {
-        console.error('Firebase initialization error:', error);
-    }
-})();
+        }
+    });
+});
 </script>
 
 <style>
@@ -143,6 +159,12 @@ $firebase_project_id = get_option('supafaya_firebase_project_id', '');
     position: relative;
     display: inline-block;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.debug-message {
+    color: #666;
+    font-size: 12px;
+    padding: 5px;
 }
 
 .supafaya-login-button {
@@ -247,9 +269,5 @@ $firebase_project_id = get_option('supafaya_firebase_project_id', '');
 .dropdown-item:hover {
     background-color: #f5f5f5;
     text-decoration: none;
-}
-
-.firebase-logout-button {
-    color: #f44336 !important;
 }
 </style> 

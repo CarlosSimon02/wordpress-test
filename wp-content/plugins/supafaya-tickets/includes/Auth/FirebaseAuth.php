@@ -19,7 +19,7 @@ class FirebaseAuth {
         add_action('wp_ajax_supafaya_firebase_auth', [$this, 'handle_firebase_auth']);
         add_action('wp_ajax_nopriv_supafaya_firebase_auth', [$this, 'handle_firebase_auth']);
         
-        // Add shortcodes
+        // Add shortcodes - these might be registered again in Plugin.php, which is fine
         add_shortcode('supafaya_firebase_login', [$this, 'firebase_login_shortcode']);
         add_shortcode('supafaya_firebase_logout', [$this, 'firebase_logout_shortcode']);
         add_shortcode('supafaya_user_dropdown', [$this, 'user_dropdown_shortcode']);
@@ -220,7 +220,7 @@ class FirebaseAuth {
     /**
      * Force load Firebase scripts on demand
      */
-    private function force_load_firebase_scripts() {
+    public function force_load_firebase_scripts() {
         // Firebase core
         wp_enqueue_script(
             'firebase-app',

@@ -222,6 +222,19 @@ class TicketController
         $this->load_item_info($event_id, $sanitized_tickets, $sanitized_addons, $ticket_info, $addon_info);
     }
 
+    // Get payment redirect URLs if provided
+    $payment_redirect_urls = isset($_POST['payment_redirect_urls']) ? $_POST['payment_redirect_urls'] : [];
+    
+    // Sanitize redirect URLs
+    $sanitized_redirect_urls = [];
+    if (!empty($payment_redirect_urls)) {
+        $sanitized_redirect_urls = [
+            'success' => esc_url_raw($payment_redirect_urls['success'] ?? ''),
+            'failed' => esc_url_raw($payment_redirect_urls['failed'] ?? ''),
+            'cancel' => esc_url_raw($payment_redirect_urls['cancel'] ?? '')
+        ];
+    }
+
     // Prepare the complete ticket data
     $ticket_data = [
         'event_id' => $event_id,
@@ -229,6 +242,11 @@ class TicketController
         'ticket_info' => $ticket_info,
         'user_data' => $user_data
     ];
+
+    // Add payment redirect URLs if available
+    if (!empty($sanitized_redirect_urls)) {
+        $ticket_data['payment_redirect_urls'] = $sanitized_redirect_urls;
+    }
 
     // Add addons if present
     if (!empty($sanitized_addons)) {

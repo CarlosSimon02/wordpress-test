@@ -28,13 +28,24 @@ class Plugin {
         add_action('admin_init', [$this, 'register_settings']);
         
         // Register shortcodes
-        add_shortcode('supafaya_firebase_login', [$this->firebase_auth, 'firebase_login_shortcode']);
-        add_shortcode('supafaya_firebase_logout', [$this->firebase_auth, 'firebase_logout_shortcode']);
-        add_shortcode('supafaya_user_dropdown', [$this->firebase_auth, 'user_dropdown_shortcode']);
+        add_shortcode('supafaya_events', array($this, 'events_shortcode'));
+        add_shortcode('supafaya_event', array($this, 'event_shortcode'));
+        add_shortcode('supafaya_login_form', array($this, 'login_form_shortcode'));
+        add_shortcode('supafaya_user_dropdown', array($this, 'user_dropdown_shortcode'));
+        add_shortcode('supafaya_payment_result', array($this, 'payment_result_shortcode'));
         
-        // Set up AJAX for all requests
-        add_action('wp_ajax_nopriv_supafaya_purchase_ticket', [$this->ticket_controller, 'ajax_purchase_ticket']);
-        add_action('wp_ajax_supafaya_purchase_ticket', [$this->ticket_controller, 'ajax_purchase_ticket']);
+        // Register AJAX actions
+        add_action('wp_ajax_supafaya_get_events', array($this->event_controller, 'ajax_get_events'));
+        add_action('wp_ajax_nopriv_supafaya_get_events', array($this->event_controller, 'ajax_get_events'));
+        
+        add_action('wp_ajax_supafaya_get_event', array($this->event_controller, 'ajax_get_event'));
+        add_action('wp_ajax_nopriv_supafaya_get_event', array($this->event_controller, 'ajax_get_event'));
+
+        add_action('wp_ajax_supafaya_purchase_ticket', array($this->event_controller, 'ajax_purchase_ticket'));
+        add_action('wp_ajax_nopriv_supafaya_purchase_ticket', array($this->event_controller, 'ajax_purchase_ticket'));
+
+        add_action('wp_ajax_supafaya_get_user_items', array($this->event_controller, 'ajax_get_user_items'));
+        add_action('wp_ajax_nopriv_supafaya_get_user_items', array($this->event_controller, 'ajax_get_user_items'));
     }
     
     public function register_assets() {
@@ -86,12 +97,31 @@ class Plugin {
         // Get profile URL
         $profile_url = get_option('supafaya_profile_page_url', home_url());
         
+        // Get payment result URL
+        $payment_result_url = get_option('supafaya_payment_result_page_url', '');
+        if (empty($payment_result_url)) {
+            // Try to find a page with our payment result shortcode
+            $result_pages = get_posts([
+                'post_type' => 'page',
+                'posts_per_page' => 1,
+                's' => '[supafaya_payment_result]'
+            ]);
+            
+            if (!empty($result_pages)) {
+                $payment_result_url = get_permalink($result_pages[0]->ID);
+            } else {
+                // Fallback to home page
+                $payment_result_url = home_url();
+            }
+        }
+        
         wp_localize_script('supafaya-tickets-script', 'supafayaTickets', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('supafaya-tickets-nonce'),
             'pluginUrl' => SUPAFAYA_PLUGIN_URL,
             'loginUrl' => $login_url,
-            'profileUrl' => $profile_url
+            'profileUrl' => $profile_url,
+            'paymentResultUrl' => $payment_result_url
         ]);
         
         // Enqueue the script whenever the shortcode is used
@@ -120,12 +150,19 @@ class Plugin {
             has_shortcode($post->post_content, 'supafaya_my_tickets') ||
             has_shortcode($post->post_content, 'supafaya_firebase_login') ||
             has_shortcode($post->post_content, 'supafaya_firebase_logout') ||
-            has_shortcode($post->post_content, 'supafaya_user_dropdown')
+            has_shortcode($post->post_content, 'supafaya_user_dropdown') ||
+            has_shortcode($post->post_content, 'supafaya_payment_result')
         )) {
             $load_script = true;
         }
         
         if ($load_script) {
+            // Force load Firebase scripts for authenticated features
+            if (method_exists($this->firebase_auth, 'force_load_firebase_scripts')) {
+                // Force load Firebase scripts
+                $this->firebase_auth->force_load_firebase_scripts();
+            }
+            
             // Make sure supafaya-tickets.js depends on firebase
             $depends = ['jquery'];
             
@@ -182,6 +219,7 @@ class Plugin {
         register_setting('supafaya_tickets_options', 'supafaya_event_page_url');
         register_setting('supafaya_tickets_options', 'supafaya_login_page_url');
         register_setting('supafaya_tickets_options', 'supafaya_profile_page_url');
+        register_setting('supafaya_tickets_options', 'supafaya_payment_result_page_url');
         
         // Firebase settings
         register_setting('supafaya_tickets_options', 'supafaya_firebase_api_key');
@@ -256,6 +294,19 @@ class Plugin {
             'supafaya_tickets_main'
         );
         
+        // Add payment result page URL field
+        add_settings_field(
+            'supafaya_payment_result_page_url',
+            'Payment Result Page URL',
+            function() {
+                $value = get_option('supafaya_payment_result_page_url', '');
+                echo '<input type="text" name="supafaya_payment_result_page_url" value="' . esc_attr($value) . '" class="regular-text">';
+                echo '<p class="description">URL where users will be redirected after payment (success/failure). Status will be added as query parameter.</p>';
+            },
+            'supafaya-tickets-settings',
+            'supafaya_tickets_main'
+        );
+        
         // Add Firebase settings section
         add_settings_section(
             'supafaya_tickets_firebase',
@@ -303,5 +354,57 @@ class Plugin {
     
     public function render_settings_page() {
         include SUPAFAYA_PLUGIN_DIR . 'templates/settings.php';
+    }
+    
+    /**
+     * Events shortcode
+     */
+    public function events_shortcode($atts) {
+        return $this->event_controller->events_shortcode($atts);
+    }
+    
+    /**
+     * Event shortcode
+     */
+    public function event_shortcode($atts) {
+        return $this->event_controller->event_shortcode($atts);
+    }
+    
+    /**
+     * Login form shortcode
+     */
+    public function login_form_shortcode($atts) {
+        if (method_exists($this->firebase_auth, 'firebase_login_shortcode')) {
+            return $this->firebase_auth->firebase_login_shortcode($atts);
+        }
+        return '<p>Login form shortcode not available</p>';
+    }
+    
+    /**
+     * User dropdown shortcode
+     */
+    public function user_dropdown_shortcode($atts) {
+        if (method_exists($this->firebase_auth, 'user_dropdown_shortcode')) {
+            return $this->firebase_auth->user_dropdown_shortcode($atts);
+        }
+        return '<p>User dropdown shortcode not available</p>';
+    }
+    
+    /**
+     * Shortcode for payment result page
+     */
+    public function payment_result_shortcode($atts) {
+        $atts = shortcode_atts([
+            'template' => 'default'
+        ], $atts);
+        
+        // Get status from URL
+        $status = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
+        $transaction_id = isset($_GET['transaction_id']) ? sanitize_text_field($_GET['transaction_id']) : '';
+        
+        // Load the appropriate template
+        ob_start();
+        include SUPAFAYA_PLUGIN_DIR . 'templates/payment-result-' . $atts['template'] . '.php';
+        return ob_get_clean();
     }
 }

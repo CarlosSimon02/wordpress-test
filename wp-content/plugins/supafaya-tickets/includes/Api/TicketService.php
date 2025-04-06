@@ -63,9 +63,9 @@ class TicketService {
                 'phone' => $user_data['phone'] ?? null
             ],
             'paymentRedirectUrls' => [
-                'success' => site_url('/payment-success'), 
-                'failed' => site_url('/payment-failed'),
-                'cancel' => site_url('/payment-cancelled')
+                'success' => $ticket_data['payment_redirect_urls']['success'] ?? site_url('/payment-success'), 
+                'failed' => $ticket_data['payment_redirect_urls']['failed'] ?? site_url('/payment-failed'),
+                'cancel' => $ticket_data['payment_redirect_urls']['cancel'] ?? site_url('/payment-cancelled')
             ]
         ];
         

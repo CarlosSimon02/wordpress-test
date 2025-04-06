@@ -18,7 +18,7 @@ class EventController
     // Apply API token to all requests
     add_action('init', [$this, 'setup_api_token']);
 
-    // Register shortcodes
+    // Register shortcodes - these might be registered again in Plugin.php, which is fine
     add_shortcode('supafaya_events', [$this, 'events_shortcode']);
     add_shortcode('supafaya_event', [$this, 'event_shortcode']);
 
