@@ -264,8 +264,19 @@
 
                 <!-- Content State -->
                 <div class="content-state" style="display: none;">
-                    <div class="purchased-items-list">
-                        <!-- Items will be populated by JavaScript -->
+                    <!-- Tabs -->
+                    <div class="tabs-container">
+                        <div class="tab-buttons">
+                            <button class="tab-button active" data-tab="all">All Items</button>
+                            <button class="tab-button" data-tab="tickets">Tickets</button>
+                            <button class="tab-button" data-tab="addons">Add-ons</button>
+                        </div>
+                        
+                        <div class="tab-content">
+                            <div class="purchased-items-list">
+                                <!-- Items will be populated by JavaScript -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -294,14 +305,19 @@
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
     transition: all 0.3s ease;
 }
 
 .purchased-items-button:hover {
     background-color: #3367d6;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(66, 133, 244, 0.4);
+}
+
+.purchased-items-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
 }
 
 .purchased-items-button svg {
@@ -328,51 +344,85 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(4px);
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .dialog-content {
     position: relative;
     background-color: white;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 600px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+    border-radius: 16px;
+    width: 95%;
+    max-width: 650px;
+    max-height: 85vh;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    transform-origin: center;
+    animation: scaleIn 0.2s ease-out;
+    display: flex;
+    flex-direction: column;
+}
+
+@keyframes scaleIn {
+    from { 
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to { 
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 .dialog-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 20px;
-    border-bottom: 1px solid #eee;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    background-color: white;
+    position: sticky;
+    top: 0;
+    z-index: 5;
 }
 
 .dialog-header h2 {
     margin: 0;
     font-size: 20px;
     font-weight: 600;
-    color: #333;
+    color: #1a1a1a;
 }
 
 .dialog-close {
     background: none;
     border: none;
     padding: 8px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
     cursor: pointer;
     color: #666;
-    transition: color 0.3s ease;
+    transition: all 0.2s ease;
 }
 
 .dialog-close:hover {
+    background-color: rgba(0, 0, 0, 0.05);
     color: #333;
 }
 
 .dialog-body {
-    padding: 20px;
+    padding: 0;
+    overflow-y: auto;
+    flex: 1;
 }
 
 /* Loading State */
@@ -381,7 +431,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 40px;
+    padding: 60px 20px;
     text-align: center;
     color: #666;
 }
@@ -389,11 +439,11 @@
 .loading-spinner {
     width: 40px;
     height: 40px;
-    border: 3px solid #f3f3f3;
+    border: 3px solid rgba(66, 133, 244, 0.1);
     border-top: 3px solid #4285f4;
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
 }
 
 @keyframes spin {
@@ -407,18 +457,21 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 40px;
+    padding: 60px 20px;
     text-align: center;
     color: #dc3545;
 }
 
 .error-state svg {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
+    color: #dc3545;
 }
 
 .error-message {
     margin: 0;
     font-size: 16px;
+    line-height: 1.6;
+    max-width: 400px;
 }
 
 /* Empty State */
@@ -427,13 +480,70 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 40px;
+    padding: 60px 20px;
     text-align: center;
     color: #666;
 }
 
 .empty-state svg {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
+    color: #999;
+}
+
+/* Tabs */
+.tabs-container {
+    width: 100%;
+}
+
+.tab-buttons {
+    display: flex;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    background-color: #f9f9f9;
+    position: sticky;
+    top: 0;
+    z-index: 4;
+}
+
+.tab-button {
+    flex: 1;
+    padding: 12px 16px;
+    background: none;
+    border: none;
+    color: #666;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.tab-button:after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: #4285f4;
+    transform: scaleX(0);
+    transition: transform 0.2s ease;
+}
+
+.tab-button.active {
+    color: #4285f4;
+    font-weight: 600;
+}
+
+.tab-button.active:after {
+    transform: scaleX(1);
+}
+
+.tab-button:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+.tab-content {
+    padding: 20px;
 }
 
 /* Content State */
@@ -445,83 +555,71 @@
 
 .purchased-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 16px;
     padding: 16px;
-    background-color: #f8f9fa;
-    border-radius: 8px;
-    transition: background-color 0.3s ease;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s ease;
+    border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .purchased-item:hover {
-    background-color: #f1f3f5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
 }
 
 .item-icon {
     width: 48px;
     height: 48px;
     background-color: #e8f0fe;
-    border-radius: 8px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #4285f4;
+    flex-shrink: 0;
 }
 
 .item-details {
     flex: 1;
+    min-width: 0; /* For text overflow to work in flex child */
 }
 
 .item-name {
-    font-weight: 500;
+    font-weight: 600;
     color: #333;
     margin: 0 0 4px 0;
+    font-size: 15px;
+    word-break: break-word;
 }
 
 .item-meta {
-    font-size: 14px;
+    font-size: 13px;
     color: #666;
+    margin-top: 4px;
+    word-break: break-word;
 }
 
 .item-price {
     font-weight: 600;
     color: #4285f4;
+    white-space: nowrap;
+    font-size: 15px;
+    flex-shrink: 0;
 }
 
-/* Responsive Styles */
-@media (max-width: 768px) {
-    .purchased-items-button {
-        padding: 10px 16px;
-        font-size: 13px;
-    }
-
-    .dialog-content {
-        width: 95%;
-        margin: 20px;
-    }
-
-    .purchased-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-    }
-
-    .item-icon {
-        width: 40px;
-        height: 40px;
-    }
-}
-
-/* New styles */
+/* Item Badge */
 .item-badge {
     display: inline-block;
-    padding: 2px 6px;
+    padding: 2px 8px;
     font-size: 11px;
     font-weight: 600;
     background-color: #f0f0f0;
     color: #666;
-    border-radius: 4px;
-    margin-bottom: 4px;
+    border-radius: 20px;
+    margin-bottom: 8px;
 }
 
 .item-badge.refunded {
@@ -529,315 +627,126 @@
     color: #d32f2f;
 }
 
+/* Addon Styles */
 .addon-item {
-    margin-left: 20px;
+    margin-left: 24px;
     background-color: #f5f9ff;
-    border-left: 2px solid #4285f4;
+    border-left: 3px solid #4285f4;
 }
 
+/* QR Code Button */
 .qr-button {
-    display: inline-block;
-    margin-top: 8px;
-    padding: 4px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 6px 12px;
     background-color: #4285f4;
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 20px;
     font-size: 12px;
+    font-weight: 500;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
 }
 
 .qr-button:hover {
     background-color: #3367d6;
 }
 
+.qr-button svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* QR Code Container */
 .qr-container {
-    margin-top: 8px;
+    margin-top: 12px;
+    background-color: white;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     text-align: center;
 }
 
 .qr-code img {
-    width: 150px;
-    height: 150px;
+    width: 180px;
+    height: 180px;
     margin: 0 auto;
     display: block;
+    border-radius: 8px;
 }
 
 .item-valid-until {
     font-size: 12px;
     color: #666;
-    margin-top: 4px;
+    margin-top: 6px;
+    font-style: italic;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .dialog-content {
+        width: 95%;
+        max-height: 80vh;
+        margin: 0 10px;
+    }
+    
+    .dialog-header {
+        padding: 16px 20px;
+    }
+    
+    .tab-button {
+        padding: 10px;
+        font-size: 13px;
+    }
+    
+    .tab-content {
+        padding: 16px;
+    }
+    
+    .purchased-item {
+        padding: 14px;
+        flex-direction: column;
+    }
+    
+    .item-icon {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 8px;
+    }
+    
+    .item-price {
+        margin-top: 8px;
+        align-self: flex-end;
+    }
+    
+    .qr-code img {
+        width: 150px;
+        height: 150px;
+    }
+    
+    .purchased-items-button {
+        padding: 10px 16px;
+        font-size: 13px;
+        bottom: 15px;
+        right: 15px;
+    }
+}
+
+/* Animations */
+.dialog-content {
+    transform-origin: center;
+    animation: scaleIn 0.2s ease-out;
+}
+
+@keyframes pulseAnimation {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
 }
 </style>
 
-<script>
-(function($) {
-    // Debug logging function
-    function debugLog(message, data = null) {
-        const timestamp = new Date().toISOString();
-        const logMessage = `[Supafaya Debug ${timestamp}] ${message}`;
-        console.log(logMessage);
-        if (data) {
-            console.log('Data:', data);
-        }
-    }
-
-    // Get current event ID from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentEventId = urlParams.get('event_id');
-    
-    debugLog('Initializing purchased items dialog', { currentEventId });
-    
-    if (!currentEventId) {
-        debugLog('Error: Event ID not found in URL');
-        return;
-    }
-
-    // Dialog elements
-    const dialog = $('.purchased-items-dialog');
-    const dialogContent = $('.dialog-content');
-    const dialogClose = $('.dialog-close');
-    const dialogOverlay = $('.dialog-overlay');
-    const purchasedItemsButton = $('.purchased-items-button');
-    
-    // State elements
-    const loadingState = $('.loading-state');
-    const errorState = $('.error-state');
-    const emptyState = $('.empty-state');
-    const contentState = $('.content-state');
-    const purchasedItemsList = $('.purchased-items-list');
-    const errorMessage = $('.error-message');
-
-    // Open dialog
-    purchasedItemsButton.on('click', function() {
-        debugLog('Purchased items button clicked');
-        
-        // Check if user is logged in
-        const currentUser = firebase.auth().currentUser;
-        debugLog('Firebase auth state', { 
-            isLoggedIn: !!currentUser,
-            userId: currentUser?.uid 
-        });
-
-        if (!currentUser) {
-            debugLog('User not logged in, redirecting to login page');
-            // Save the current URL to redirect back after login
-            document.cookie = 'supafaya_checkout_redirect=' + window.location.href + '; path=/; max-age=3600';
-            
-            // Redirect to login page
-            window.location.href = supafayaTickets.loginUrl;
-            return;
-        }
-
-        // Show dialog and loading state
-        dialog.show();
-        loadingState.show();
-        errorState.hide();
-        emptyState.hide();
-        contentState.hide();
-
-        debugLog('Fetching Firebase token');
-        // Get Firebase token
-        currentUser.getIdToken(true).then(function(token) {
-            debugLog('Firebase token obtained', { tokenLength: token.length });
-            
-            // Make API request
-            debugLog('Making API request for user items', {
-                eventId: currentEventId,
-                ajaxUrl: supafayaTickets.ajaxUrl
-            });
-
-            $.ajax({
-                url: supafayaTickets.ajaxUrl,
-                method: 'GET',
-                data: {
-                    action: 'supafaya_get_user_items',
-                    event_id: currentEventId,
-                    nonce: supafayaTickets.nonce
-                },
-                headers: {
-                    'X-Firebase-Token': token
-                },
-                success: function(response) {
-                    debugLog('API response received', response);
-                    loadingState.hide();
-                    
-                    if (response.success) {
-                        const items = response.data;
-                        debugLog('Items retrieved', { 
-                            itemCount: items?.length || 0,
-                            items: items 
-                        });
-                        
-                        if (items && items.length > 0) {
-                            // Show items
-                            contentState.show();
-                            renderItems(items);
-                        } else {
-                            // Show empty state
-                            emptyState.show();
-                            debugLog('No items found for user');
-                        }
-                    } else {
-                        // Show error state
-                        errorState.show();
-                        errorMessage.text(response.message || 'Failed to load purchased items');
-                        debugLog('API request failed', { 
-                            message: response.message,
-                            response: response 
-                        });
-                    }
-                },
-                error: function(xhr, status, error) {
-                    debugLog('AJAX error', { 
-                        status: status,
-                        error: error,
-                        response: xhr.responseText
-                    });
-                    loadingState.hide();
-                    errorState.show();
-                    errorMessage.text('Failed to load purchased items. Please try again.');
-                }
-            });
-        }).catch(function(error) {
-            debugLog('Firebase token error', error);
-            loadingState.hide();
-            errorState.show();
-            errorMessage.text('Authentication error. Please try logging in again.');
-        });
-    });
-
-    // Close dialog
-    function closeDialog() {
-        debugLog('Closing dialog');
-        dialog.hide();
-    }
-
-    dialogClose.on('click', closeDialog);
-    dialogOverlay.on('click', closeDialog);
-
-    // Close on escape key
-    $(document).on('keydown', function(e) {
-        if (e.key === 'Escape' && dialog.is(':visible')) {
-            closeDialog();
-        }
-    });
-
-    // Render purchased items
-    function renderItems(items) {
-        debugLog('Rendering items', { itemCount: items.length });
-        purchasedItemsList.empty();
-
-        items.forEach(function(item, index) {
-            debugLog(`Rendering item ${index + 1}`, item);
-            const itemElement = $('<div class="purchased-item">');
-            
-            // Item icon
-            const icon = $('<div class="item-icon">');
-            icon.html(getItemIcon(item.type));
-            
-            // Item details
-            const details = $('<div class="item-details">');
-            
-            // Add badge if refunded
-            if (item.refunded) {
-                details.append($('<span class="item-badge refunded">').text('Refunded'));
-            } else if (item.status && item.status.toLowerCase() !== 'active') {
-                details.append($('<span class="item-badge">').text(item.status));
-            }
-            
-            // Item name and description
-            details.append($('<div class="item-name">').text(item.name));
-            
-            // Item meta information
-            const metaInfo = [];
-            
-            // Add description
-            if (item.description) {
-                metaInfo.push(item.description);
-            }
-            
-            // Add purchase date if available
-            if (item.purchase_date) {
-                const purchaseDate = new Date(item.purchase_date);
-                if (!isNaN(purchaseDate.getTime())) {
-                    metaInfo.push('Purchased: ' + purchaseDate.toLocaleDateString());
-                }
-            }
-            
-            // Add quantity if more than 1
-            if (item.quantity > 1) {
-                metaInfo.push(`Quantity: ${item.quantity}`);
-            }
-            
-            // Add reference codes
-            if (item.type === 'ticket' && item.ticket_ref) {
-                metaInfo.push(`Ref: ${item.ticket_ref}`);
-            } else if (item.type === 'addon' && item.addon_ref) {
-                metaInfo.push(`Ref: ${item.addon_ref}`);
-            }
-            
-            // Add ticket ID for QR code display
-            if (item.type === 'ticket' && item.qr_code) {
-                // Create a container for QR code that will be shown on click
-                const qrContainer = $('<div class="qr-container">').hide();
-                const qrCode = $('<div class="qr-code">');
-                qrCode.append($('<img>').attr('src', item.qr_code).attr('alt', 'Ticket QR Code'));
-                qrContainer.append(qrCode);
-                
-                // Create button to show QR code
-                const qrButton = $('<button class="qr-button">').text('Show QR Code');
-                qrButton.on('click', function(e) {
-                    e.preventDefault();
-                    qrContainer.toggle();
-                    $(this).text(qrContainer.is(':visible') ? 'Hide QR Code' : 'Show QR Code');
-                });
-                
-                details.append(qrButton);
-                details.append(qrContainer);
-            }
-            
-            // Add all meta info
-            if (metaInfo.length > 0) {
-                details.append($('<div class="item-meta">').text(metaInfo.join(' • ')));
-            }
-            
-            // Item price
-            const price = $('<div class="item-price">');
-            if (item.price > 0) {
-                price.text('₱' + parseFloat(item.price).toFixed(2));
-            } else {
-                price.text('Free');
-            }
-            
-            // Add valid until for tickets
-            if (item.type === 'ticket' && item.valid_until) {
-                details.append($('<div class="item-valid-until">').text('Valid until: ' + new Date(item.valid_until).toLocaleDateString()));
-            }
-            
-            // Assemble item
-            itemElement.append(icon, details, price);
-            
-            // Add a class if this item is an addon
-            if (item.type === 'addon') {
-                itemElement.addClass('addon-item');
-            }
-            
-            purchasedItemsList.append(itemElement);
-        });
-    }
-
-    // Get appropriate icon based on item type
-    function getItemIcon(type) {
-        debugLog('Getting icon for item type', { type });
-        const icons = {
-            'ticket': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9V5c0-1.1.9-2 2-2h16a2 2 0 0 1 2 2v4"></path><path d="M2 15v4c0 1.1.9 2 2 2h16a2 2 0 0 0 2-2v-4"></path><path d="M4 9h16"></path><path d="M4 15h16"></path></svg>',
-            'addon': '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>'
-        };
-        
-        return icons[type] || icons.ticket;
-    }
-})(jQuery);
-</script>
+<!-- The JavaScript code has been moved to /assets/js/purchased-items.js -->
 

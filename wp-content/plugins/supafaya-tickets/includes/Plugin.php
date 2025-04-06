@@ -55,6 +55,15 @@ class Plugin {
             true
         );
         
+        // Register the purchased items script
+        wp_register_script(
+            'supafaya-purchased-items',
+            SUPAFAYA_PLUGIN_URL . 'assets/js/purchased-items.js',
+            ['jquery', 'supafaya-tickets-script'],
+            SUPAFAYA_VERSION,
+            true
+        );
+        
         // Get login URL - first check if it's configured in settings
         $login_url = get_option('supafaya_login_page_url', '');
         
@@ -132,6 +141,17 @@ class Plugin {
                 SUPAFAYA_VERSION,
                 true
             );
+            
+            // Enqueue the purchased items script when on event page
+            if (isset($_GET['event_id'])) {
+                wp_enqueue_script(
+                    'supafaya-purchased-items',
+                    SUPAFAYA_PLUGIN_URL . 'assets/js/purchased-items.js',
+                    ['jquery', 'supafaya-tickets-script'],
+                    SUPAFAYA_VERSION,
+                    true
+                );
+            }
         }
     }
     

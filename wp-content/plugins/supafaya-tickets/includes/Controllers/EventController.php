@@ -118,7 +118,7 @@ class EventController
                 <p>Event not found</p>
               </div>';
     }
-    
+
     // Fetch event addons
     $addons_response = $this->event_service->getEventAddons($atts['event_id']);
     if ($addons_response['success']) {
@@ -226,9 +226,10 @@ class EventController
   /**
    * AJAX handler for getting user's purchased items for an event
    */
-  public function ajax_get_user_items() {
+  public function ajax_get_user_items()
+  {
     // Debug logging function
-    $debug_log = function($message, $data = null) {
+    $debug_log = function ($message, $data = null) {
       error_log(sprintf('[Supafaya Debug %s] %s', date('Y-m-d H:i:s'), $message));
       if ($data !== null) {
         error_log('Data: ' . print_r($data, true));
@@ -284,7 +285,7 @@ class EventController
     // Make API request to get user items
     $api_url = '/events/' . $event_id . '/user-items';
     $debug_log('Making API request', ['url' => $api_url]);
-    
+
     $response = $this->api_client->get($api_url);
     $debug_log('API response received', $response);
 
@@ -304,7 +305,7 @@ class EventController
     $responseData = $response['data']['data'] ?? [];
     $tickets = $responseData['tickets'] ?? [];
     $addons = $responseData['addons'] ?? [];
-    
+
     $debug_log('Response data structure', [
       'has_tickets' => !empty($tickets),
       'tickets_count' => count($tickets),
@@ -315,56 +316,64 @@ class EventController
 
     // Format tickets for display
     $formatted_items = [];
-    
+
     // Process tickets
+    // Process tickets (updated with new fields)
     foreach ($tickets as $ticket) {
       $formatted_items[] = [
         'id' => $ticket['id'] ?? '',
-        'name' => $ticket['ticket_type'] ?? 'Ticket',
-        'description' => 'Purchased: ' . date('M j, Y', strtotime($ticket['purchased_date'] ?? 'now')),
-        'price' => 0, // Price is not directly in the ticket object
+        'name' => $ticket['name'] ?? $ticket['ticket_type'] ?? 'Ticket', // Use new 'name' field
+        'description' => $ticket['description'] ?? 'Purchased: ' . date('M j, Y', strtotime($ticket['purchased_date'] ?? 'now')),
+        'price' => $ticket['price'] ?? 0, // Now available directly
+        'currency' => $ticket['currency'] ?? 'USD', // New field
+        'is_free' => $ticket['is_free'] ?? false, // New field
         'type' => 'ticket',
         'quantity' => $ticket['quantity'] ?? 1,
-        'purchase_date' => $ticket['purchased_date'] ?? '',
+        'purchase_date' => $ticket['created_at'] ?? $ticket['purchased_date'] ?? '', // Prefer 'created_at'
         'status' => $ticket['status'] ?? 'active',
         'qr_code' => $ticket['qr_code'] ?? '',
         'ticket_ref' => $ticket['ticket_ref'] ?? '',
         'valid_until' => $ticket['valid_until'] ?? '',
         'ticket_id' => $ticket['ticket_id'] ?? '',
-        'email' => $ticket['email'] ?? ''
+        'email' => $ticket['email'] ?? '',
+        'consumed' => $ticket['consumed'] ?? false // New field
       ];
-      
-      // Process ticket addons if any
+
+      // Process ticket addons (if any)
       if (!empty($ticket['addons'])) {
         foreach ($ticket['addons'] as $addon) {
           $formatted_items[] = [
             'id' => $addon['addonId'] ?? '',
-            'name' => 'Addon for ticket ' . ($ticket['ticket_ref'] ?? ''),
-            'description' => 'Add-on item',
+            'name' => $addon['title'] ?? 'Addon for ticket ' . ($ticket['ticket_ref'] ?? ''),
+            'description' => $addon['description'] ?? 'Add-on item', // New field
             'price' => $addon['price'] ?? 0,
             'type' => 'addon',
             'quantity' => $addon['quantity'] ?? 1,
-            'purchase_date' => $ticket['purchased_date'] ?? '', // Use ticket purchase date for addon
+            'purchase_date' => $ticket['purchased_date'] ?? '',
             'status' => $addon['status'] ?? 'active',
             'refunded' => $addon['refunded'] ?? false,
+            'organizerId' => $addon['organizerId'] ?? null, // New field
+            'sold' => $addon['sold'] ?? 0, // New field
             'parent_ticket_id' => $ticket['id'] ?? ''
           ];
         }
       }
     }
-    
-    // Process standalone addons if any
+
+    // Process standalone addons (updated with new fields)
     foreach ($addons as $addon) {
       $formatted_items[] = [
         'id' => $addon['id'] ?? $addon['addonId'] ?? '',
-        'name' => 'Add-on Item ' . ($addon['addon_ref'] ?? ''),
-        'description' => 'Standalone add-on item',
+        'name' => $addon['title'] ?? 'Add-on Item ' . ($addon['addon_ref'] ?? ''),
+        'description' => $addon['description'] ?? 'Standalone add-on item', // New field
         'price' => $addon['price'] ?? 0,
         'type' => 'addon',
         'quantity' => $addon['quantity'] ?? 1,
         'purchase_date' => $addon['created_at'] ?? '',
         'status' => $addon['status'] ?? 'active',
         'refunded' => $addon['refunded'] ?? false,
+        'organizerId' => $addon['organizerId'] ?? null, // New field
+        'sold' => $addon['sold'] ?? 0, // New field
         'addon_ref' => $addon['addon_ref'] ?? ''
       ];
     }
