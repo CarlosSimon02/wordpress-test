@@ -1,5 +1,5 @@
 /**
- * Firebase Authentication Handler
+ * Updated Firebase Authentication Handler
  */
 (function($) {
     'use strict';
@@ -63,6 +63,54 @@
         privacyPolicyUrl: '#'
     };
 
+    // Function to update the UI based on auth state
+    function updateAuthUI(user) {
+        if (user) {
+            // User is signed in
+            console.log('User is signed in:', user.email);
+            setFirebaseUserCookie(user);
+            
+            // Update the new UI template
+            $('.auth-logged-in').show();
+            $('.auth-logged-out').hide();
+            
+            // Set user name
+            $('#user-name').text(user.displayName || user.email.split('@')[0]);
+            
+            // Set user avatar
+            const $avatarImg = $('#user-avatar-img');
+            const $userInitials = $('#user-initials');
+            
+            if (user.photoURL) {
+                $avatarImg.attr('src', user.photoURL).show();
+                $userInitials.hide();
+            } else {
+                $avatarImg.hide();
+                const initials = user.displayName ? 
+                    user.displayName.split(' ').map(n => n[0]).join('') : 
+                    user.email[0].toUpperCase();
+                $userInitials.text(initials).show();
+            }
+            
+            // Store token in a cookie for server-side access
+            updateFirebaseToken(user);
+            
+            // Add token to all AJAX requests
+            setupAjaxTokenInterceptor(user);
+        } else {
+            // User is signed out
+            console.log('User is signed out');
+            
+            // Clear cookies
+            document.cookie = 'firebase_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+            document.cookie = 'firebase_user_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+            
+            // Update the new UI template
+            $('.auth-logged-in').hide();
+            $('.auth-logged-out').show();
+        }
+    }
+
     // Wait for document ready
     $(document).ready(function() {
         // Check URL for redirect_to parameter
@@ -81,40 +129,8 @@
 
         // Listen for auth state changes
         auth.onAuthStateChanged(function(user) {
-            if (user) {
-                // User is signed in
-                console.log('User is signed in:', user.email);
-                setFirebaseUserCookie(user);
-                
-                // Update UI for logged-in state
-                $('.supafaya-firebase-user-info').html(`
-                    <div class="user-details">
-                        ${user.photoURL ? `<img src="${user.photoURL}" class="user-avatar" />` : ''}
-                        <span class="user-name">${user.displayName || user.email}</span>
-                    </div>
-                `);
-                
-                // Show logout container if present
-                $('.supafaya-logout-container').show();
-                
-                // Store token in a cookie for server-side access
-                updateFirebaseToken(user);
-                
-                // Add token to all AJAX requests
-                setupAjaxTokenInterceptor(user);
-            } else {
-                // User is signed out
-                console.log('User is signed out');
-                // Clear cookies
-                document.cookie = 'firebase_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-                document.cookie = 'firebase_user_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-                
-                // Update UI for logged-out state
-                $('.supafaya-firebase-user-info').html('');
-                
-                // Hide logout container if present
-                $('.supafaya-logout-container').hide();
-            }
+            currentUser = user;
+            updateAuthUI(user);
         });
 
         // Handle logout button
@@ -269,4 +285,4 @@
             document.cookie = 'firebase_user_token=' + token + '; path=/; max-age=3600; SameSite=Lax';
         });
     }
-})(jQuery); 
+})(jQuery);
