@@ -254,83 +254,56 @@
                 // Item details
                 const details = $('<div class="item-details">');
                 
-                // Add badge if refunded
-                if (item.refunded) {
-                    details.append($('<span class="item-badge refunded">').text('Refunded'));
-                } else if (item.status && item.status.toLowerCase() !== 'active') {
-                    details.append($('<span class="item-badge">').text(item.status));
-                }
-                
-                // Item name and description
-                details.append($('<div class="item-name">').text(item.name));
-                
-                // Item meta information
-                const metaInfo = [];
-                
-                // Add description
-                if (item.description) {
-                    metaInfo.push(item.description);
-                }
-                
-                // Add purchase date if available
-                if (item.purchase_date) {
-                    const purchaseDate = new Date(item.purchase_date);
-                    if (!isNaN(purchaseDate.getTime())) {
-                        metaInfo.push('Purchased: ' + purchaseDate.toLocaleDateString());
-                    }
-                }
-                
-                // Add quantity if more than 1
-                if (item.quantity > 1) {
-                    metaInfo.push(`Quantity: ${item.quantity}`);
-                }
-                
-                // Add reference codes
-                if (item.type === 'ticket' && item.ticket_ref) {
-                    metaInfo.push(`Ref: ${item.ticket_ref}`);
-                } else if (item.type === 'addon' && item.addon_ref) {
-                    metaInfo.push(`Ref: ${item.addon_ref}`);
-                }
-                
-                // Handle QR code (convert from buffer if needed)
-                if (item.type === 'ticket' && item.qr_code) {
-                    // Check if QR code is a buffer and convert if needed
-                    let qrSrc = item.qr_code;
+                // Display different content based on item type
+                if (item.type === 'ticket') {
+                    // For tickets: name, ticket_type, price, currency, purchased_date, valid_until, qr_code
                     
-                    // If it's a buffer object, convert to image
-                    if (typeof item.qr_code === 'object' && item.qr_code !== null && item.qr_code.type === 'Buffer') {
-                        qrSrc = this.bufferToImage(item.qr_code);
+                    // Add ticket name (main heading)
+                    details.append($('<div class="item-name">').text(item.name));
+                    
+                    // Create meta info array for tickets
+                    const metaInfo = [];
+                    
+                    // Add ticket type if available
+                    if (item.ticket_type) {
+                        metaInfo.push(`Type: ${item.ticket_type}`);
                     }
                     
-                    if (qrSrc) {
-                        const qrContainer = $('<div class="qr-container">').hide();
-                        const qrCode = $('<div class="qr-code">');
-                        qrCode.append($('<img>').attr('src', qrSrc).attr('alt', 'Ticket QR Code'));
-                        qrContainer.append(qrCode);
+                    // Add purchased date if available
+                    if (item.purchase_date) {
+                        const purchaseDate = new Date(item.purchase_date);
+                        if (!isNaN(purchaseDate.getTime())) {
+                            metaInfo.push('Purchased: ' + purchaseDate.toLocaleDateString());
+                        }
+                    }
+                    
+                    // Add all meta info
+                    if (metaInfo.length > 0) {
+                        details.append($('<div class="item-meta">').text(metaInfo.join(' • ')));
+                    }
+                    
+                    // Add valid until for tickets
+                    if (item.valid_until) {
+                        details.append($('<div class="item-valid-until">').text('Valid until: ' + new Date(item.valid_until).toLocaleDateString()));
+                    }
+                    
+                    // Handle QR code (convert from buffer if needed)
+                    if (item.qr_code) {
+                        // Check if QR code is a buffer and convert if needed
+                        let qrSrc = item.qr_code;
                         
-                        const qrButton = $('<button class="qr-button">').html(`
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                <rect x="7" y="7" width="3" height="3"></rect>
-                                <rect x="14" y="7" width="3" height="3"></rect>
-                                <rect x="7" y="14" width="3" height="3"></rect>
-                                <rect x="14" y="14" width="3" height="3"></rect>
-                            </svg>
-                            Show QR Code
-                        `);
+                        // If it's a buffer object, convert to image
+                        if (typeof item.qr_code === 'object' && item.qr_code !== null && item.qr_code.type === 'Buffer') {
+                            qrSrc = this.bufferToImage(item.qr_code);
+                        }
                         
-                        const self = this;
-                        qrButton.on('click', function(e) {
-                            e.preventDefault();
-                            qrContainer.toggle();
+                        if (qrSrc) {
+                            const qrContainer = $('<div class="qr-container">').hide();
+                            const qrCode = $('<div class="qr-code">');
+                            qrCode.append($('<img>').attr('src', qrSrc).attr('alt', 'Ticket QR Code'));
+                            qrContainer.append(qrCode);
                             
-                            // Update button text based on visibility
-                            const buttonText = qrContainer.is(':visible') 
-                                ? 'Hide QR Code' 
-                                : 'Show QR Code';
-                                
-                            // Keep the SVG icon when updating text
-                            $(this).html(`
+                            const qrButton = $('<button class="qr-button">').html(`
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                                     <rect x="7" y="7" width="3" height="3"></rect>
@@ -338,38 +311,70 @@
                                     <rect x="7" y="14" width="3" height="3"></rect>
                                     <rect x="14" y="14" width="3" height="3"></rect>
                                 </svg>
-                                ${buttonText}
+                                Show QR Code
                             `);
-                        });
-                        
-                        details.append(qrButton);
-                        details.append(qrContainer);
+                            
+                            qrButton.on('click', function(e) {
+                                e.preventDefault();
+                                qrContainer.toggle();
+                                
+                                // Update button text based on visibility
+                                const buttonText = qrContainer.is(':visible') 
+                                    ? 'Hide QR Code' 
+                                    : 'Show QR Code';
+                                    
+                                // Keep the SVG icon when updating text
+                                $(this).html(`
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                        <rect x="7" y="7" width="3" height="3"></rect>
+                                        <rect x="14" y="7" width="3" height="3"></rect>
+                                        <rect x="7" y="14" width="3" height="3"></rect>
+                                        <rect x="14" y="14" width="3" height="3"></rect>
+                                    </svg>
+                                    ${buttonText}
+                                `);
+                            });
+                            
+                            details.append(qrButton);
+                            details.append(qrContainer);
+                        }
                     }
-                }
-                
-                // Add all meta info
-                if (metaInfo.length > 0) {
-                    details.append($('<div class="item-meta">').text(metaInfo.join(' • ')));
-                }
-                
-                // Item price
-                const price = $('<div class="item-price">');
-                if (item.price > 0) {
-                    price.text('₱' + parseFloat(item.price).toFixed(2));
-                } else {
-                    price.text('Free');
-                }
-                
-                // Add valid until for tickets
-                if (item.type === 'ticket' && item.valid_until) {
-                    details.append($('<div class="item-valid-until">').text('Valid until: ' + new Date(item.valid_until).toLocaleDateString()));
-                }
-                
-                // Assemble item
-                itemElement.append(icon, details, price);
-                
-                // Add a class if this item is an addon
-                if (item.type === 'addon') {
+                    
+                    // Price for tickets
+                    const price = $('<div class="item-price">');
+                    if (item.price > 0) {
+                        // Use currency if available, default to PHP
+                        const currencySymbol = item.currency === 'USD' ? '$' : '₱';
+                        price.text(currencySymbol + parseFloat(item.price).toFixed(2));
+                    } else {
+                        price.text('Free');
+                    }
+                    
+                    // Assemble ticket item
+                    itemElement.append(icon, details, price);
+                    
+                } else if (item.type === 'addon') {
+                    // For addons: title, quantity, price
+                    
+                    // Add addon title (main heading)
+                    details.append($('<div class="item-name">').text(item.title || 'Add-on'));
+                    
+                    // Quantity info for addons
+                    if (item.quantity && item.quantity > 1) {
+                        details.append($('<div class="item-quantity">').text(`Quantity: ${item.quantity}`));
+                    }
+                    
+                    // Price for addons
+                    const price = $('<div class="item-price">');
+                    if (item.price > 0) {
+                        price.text('₱' + parseFloat(item.price).toFixed(2));
+                    } else {
+                        price.text('Free');
+                    }
+                    
+                    // Assemble addon item
+                    itemElement.append(icon, details, price);
                     itemElement.addClass('addon-item');
                 }
                 

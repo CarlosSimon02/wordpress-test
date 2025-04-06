@@ -228,19 +228,8 @@ class EventController
    */
   public function ajax_get_user_items()
   {
-    // Debug logging function
-    $debug_log = function ($message, $data = null) {
-      error_log(sprintf('[Supafaya Debug %s] %s', date('Y-m-d H:i:s'), $message));
-      if ($data !== null) {
-        error_log('Data: ' . print_r($data, true));
-      }
-    };
-
-    $debug_log('Starting ajax_get_user_items request');
-
     // Verify nonce
     if (!isset($_GET['nonce']) || !wp_verify_nonce($_GET['nonce'], 'supafaya-tickets-nonce')) {
-      $debug_log('Nonce verification failed', $_GET);
       wp_send_json([
         'success' => false,
         'message' => 'Security verification failed'
@@ -250,10 +239,8 @@ class EventController
 
     // Get event ID
     $event_id = sanitize_text_field($_GET['event_id'] ?? '');
-    $debug_log('Event ID received', $event_id);
 
     if (empty($event_id)) {
-      $debug_log('Error: Event ID is required');
       wp_send_json([
         'success' => false,
         'message' => 'Event ID is required'
@@ -264,13 +251,8 @@ class EventController
     // Get Firebase token from request
     $headers = function_exists('getallheaders') ? getallheaders() : [];
     $firebase_token = isset($headers['X-Firebase-Token']) ? $headers['X-Firebase-Token'] : null;
-    $debug_log('Firebase token received', [
-      'has_token' => !empty($firebase_token),
-      'token_length' => $firebase_token ? strlen($firebase_token) : 0
-    ]);
 
     if (!$firebase_token) {
-      $debug_log('Error: No Firebase token provided');
       wp_send_json([
         'success' => false,
         'message' => 'Authentication required'
@@ -280,20 +262,13 @@ class EventController
 
     // Set the Firebase token for API requests
     $this->api_client->setToken($firebase_token);
-    $debug_log('Firebase token set in API client');
 
     // Make API request to get user items
     $api_url = '/events/' . $event_id . '/user-items';
-    $debug_log('Making API request', ['url' => $api_url]);
-
+    
     $response = $this->api_client->get($api_url);
-    $debug_log('API response received', $response);
 
     if (!$response['success']) {
-      $debug_log('API request failed', [
-        'message' => $response['message'] ?? 'Unknown error',
-        'response' => $response
-      ]);
       wp_send_json([
         'success' => false,
         'message' => $response['message'] ?? 'Failed to fetch user items'
@@ -306,82 +281,49 @@ class EventController
     $tickets = $responseData['tickets'] ?? [];
     $addons = $responseData['addons'] ?? [];
 
-    $debug_log('Response data structure', [
-      'has_tickets' => !empty($tickets),
-      'tickets_count' => count($tickets),
-      'has_addons' => !empty($addons),
-      'addons_count' => count($addons),
-      'response_structure' => array_keys($responseData)
-    ]);
-
     // Format tickets for display
     $formatted_items = [];
 
     // Process tickets
-    // Process tickets (updated with new fields)
     foreach ($tickets as $ticket) {
       $formatted_items[] = [
         'id' => $ticket['id'] ?? '',
-        'name' => $ticket['name'] ?? $ticket['ticket_type'] ?? 'Ticket', // Use new 'name' field
-        'description' => $ticket['description'] ?? 'Purchased: ' . date('M j, Y', strtotime($ticket['purchased_date'] ?? 'now')),
-        'price' => $ticket['price'] ?? 0, // Now available directly
-        'currency' => $ticket['currency'] ?? 'USD', // New field
-        'is_free' => $ticket['is_free'] ?? false, // New field
+        'name' => $ticket['name'] ?? $ticket['ticket_type'] ?? 'Ticket',
+        'ticket_type' => $ticket['ticket_type'] ?? '',
+        'description' => $ticket['description'] ?? '',
+        'price' => $ticket['price'] ?? 0,
+        'currency' => $ticket['currency'] ?? 'PHP',
+        'is_free' => $ticket['is_free'] ?? ($ticket['price'] == 0),
         'type' => 'ticket',
         'quantity' => $ticket['quantity'] ?? 1,
-        'purchase_date' => $ticket['created_at'] ?? $ticket['purchased_date'] ?? '', // Prefer 'created_at'
+        'purchase_date' => $ticket['created_at'] ?? $ticket['purchased_date'] ?? '',
         'status' => $ticket['status'] ?? 'active',
         'qr_code' => $ticket['qr_code'] ?? '',
         'ticket_ref' => $ticket['ticket_ref'] ?? '',
         'valid_until' => $ticket['valid_until'] ?? '',
         'ticket_id' => $ticket['ticket_id'] ?? '',
-        'email' => $ticket['email'] ?? '',
-        'consumed' => $ticket['consumed'] ?? false // New field
+        'consumed' => $ticket['consumed'] ?? false,
+        'updated_at' => $ticket['updated_at'] ?? ''
       ];
-
-      // Process ticket addons (if any)
-      if (!empty($ticket['addons'])) {
-        foreach ($ticket['addons'] as $addon) {
-          $formatted_items[] = [
-            'id' => $addon['addonId'] ?? '',
-            'name' => $addon['title'] ?? 'Addon for ticket ' . ($ticket['ticket_ref'] ?? ''),
-            'description' => $addon['description'] ?? 'Add-on item', // New field
-            'price' => $addon['price'] ?? 0,
-            'type' => 'addon',
-            'quantity' => $addon['quantity'] ?? 1,
-            'purchase_date' => $ticket['purchased_date'] ?? '',
-            'status' => $addon['status'] ?? 'active',
-            'refunded' => $addon['refunded'] ?? false,
-            'organizerId' => $addon['organizerId'] ?? null, // New field
-            'sold' => $addon['sold'] ?? 0, // New field
-            'parent_ticket_id' => $ticket['id'] ?? ''
-          ];
-        }
-      }
     }
 
-    // Process standalone addons (updated with new fields)
+    // Process standalone addons
     foreach ($addons as $addon) {
       $formatted_items[] = [
         'id' => $addon['id'] ?? $addon['addonId'] ?? '',
-        'name' => $addon['title'] ?? 'Add-on Item ' . ($addon['addon_ref'] ?? ''),
-        'description' => $addon['description'] ?? 'Standalone add-on item', // New field
+        'title' => $addon['title'] ?? 'Add-on Item',
+        'description' => $addon['description'] ?? '',
         'price' => $addon['price'] ?? 0,
         'type' => 'addon',
         'quantity' => $addon['quantity'] ?? 1,
         'purchase_date' => $addon['created_at'] ?? '',
         'status' => $addon['status'] ?? 'active',
         'refunded' => $addon['refunded'] ?? false,
-        'organizerId' => $addon['organizerId'] ?? null, // New field
-        'sold' => $addon['sold'] ?? 0, // New field
+        'organizerId' => $addon['organizerId'] ?? null,
+        'sold' => $addon['sold'] ?? 0,
         'addon_ref' => $addon['addon_ref'] ?? ''
       ];
     }
-
-    $debug_log('Formatted items', [
-      'item_count' => count($formatted_items),
-      'items' => $formatted_items
-    ]);
 
     wp_send_json([
       'success' => true,

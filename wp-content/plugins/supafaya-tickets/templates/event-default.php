@@ -685,6 +685,12 @@
     font-style: italic;
 }
 
+.item-quantity {
+    font-size: 13px;
+    color: #666;
+    margin-top: 4px;
+}
+
 /* Responsive Styles */
 @media (max-width: 768px) {
     .dialog-content {
