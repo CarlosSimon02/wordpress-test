@@ -101,7 +101,6 @@ class Plugin {
         // If we have event_id in the URL
         if (isset($_GET['event_id'])) {
             $load_script = true;
-            error_log('Loading tickets script: event_id in URL');
         }
         
         // Check if the content has any of our shortcodes
@@ -115,12 +114,7 @@ class Plugin {
             has_shortcode($post->post_content, 'supafaya_user_dropdown')
         )) {
             $load_script = true;
-            error_log('Loading tickets script: shortcode found');
         }
-        
-        // Always load for debugging
-        $load_script = true;
-        error_log('Loading tickets script: forcing load for debugging');
         
         if ($load_script) {
             // Make sure supafaya-tickets.js depends on firebase
@@ -129,20 +123,15 @@ class Plugin {
             // Add supafaya-firebase as a dependency if it's been enqueued
             if (wp_script_is('supafaya-firebase', 'registered')) {
                 $depends[] = 'supafaya-firebase';
-                error_log('Adding supafaya-firebase as dependency');
-            } else {
-                error_log('Warning: supafaya-firebase not registered');
             }
             
             wp_enqueue_script(
                 'supafaya-tickets-script',
                 SUPAFAYA_PLUGIN_URL . 'assets/js/supafaya-tickets.js',
                 $depends,
-                SUPAFAYA_VERSION . '.' . time(), // Add timestamp to bust cache
+                SUPAFAYA_VERSION,
                 true
             );
-            
-            error_log('Tickets script enqueued');
         }
     }
     
