@@ -77,30 +77,37 @@ class FirebaseAuth {
      * Enqueue Firebase scripts and styles
      */
     public function enqueue_firebase_scripts() {
-        // Load Firebase scripts on more pages
+        // Always load Firebase scripts when the user dropdown shortcode is used
         global $post;
         $should_load = false;
         
-        // Check if we're on a page with the login shortcode
-        if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'supafaya_firebase_login')) {
-            $should_load = true;
+        // Check for shortcodes in the content
+        if (is_a($post, 'WP_Post')) {
+            // Debug info
+            error_log('Post ID: ' . $post->ID . ', Post content has Firebase login shortcode: ' . (has_shortcode($post->post_content, 'supafaya_firebase_login') ? 'yes' : 'no'));
+            error_log('Post content has User dropdown shortcode: ' . (has_shortcode($post->post_content, 'supafaya_user_dropdown') ? 'yes' : 'no'));
+            
+            if (has_shortcode($post->post_content, 'supafaya_firebase_login') || 
+                has_shortcode($post->post_content, 'supafaya_user_dropdown') || 
+                has_shortcode($post->post_content, 'supafaya_firebase_logout') ||
+                has_shortcode($post->post_content, 'supafaya_events') || 
+                has_shortcode($post->post_content, 'supafaya_event') || 
+                has_shortcode($post->post_content, 'supafaya_ticket_checkout') || 
+                has_shortcode($post->post_content, 'supafaya_my_tickets')) {
+                $should_load = true;
+                error_log('Should load Firebase: yes (shortcode found)');
+            }
         }
         
         // Also load on pages with checkout functionality
         if (isset($_GET['event_id'])) {
             $should_load = true;
+            error_log('Should load Firebase: yes (event_id in URL)');
         }
         
-        // Load on any page with our other shortcodes
-        if (is_a($post, 'WP_Post') && (
-            has_shortcode($post->post_content, 'supafaya_events') || 
-            has_shortcode($post->post_content, 'supafaya_event') || 
-            has_shortcode($post->post_content, 'supafaya_ticket_checkout') || 
-            has_shortcode($post->post_content, 'supafaya_my_tickets') ||
-            has_shortcode($post->post_content, 'supafaya_firebase_logout')
-        )) {
-            $should_load = true;
-        }
+        // IMPORTANT: Always load on any page for testing
+        $should_load = true;
+        error_log('Should load Firebase: yes (forcing load for debugging)');
         
         if ($should_load) {
             // Firebase core
@@ -121,23 +128,23 @@ class FirebaseAuth {
                 true
             );
             
-            // Firebase UI (only needed on login page)
-            if (has_shortcode($post->post_content, 'supafaya_firebase_login')) {
-            wp_enqueue_script(
-                'firebaseui',
-                'https://www.gstatic.com/firebasejs/ui/6.0.0/firebase-ui-auth.js',
-                ['firebase-auth'],
-                null,
-                true
-            );
-            
-            // Firebase UI CSS
-            wp_enqueue_style(
-                'firebaseui-css',
-                'https://www.gstatic.com/firebasejs/ui/6.0.0/firebase-ui-auth.css',
-                [],
-                null
-            );
+            // FirebaseUI (only needed on login page)
+            if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'supafaya_firebase_login')) {
+                wp_enqueue_script(
+                    'firebaseui',
+                    'https://www.gstatic.com/firebasejs/ui/6.0.0/firebase-ui-auth.js',
+                    ['firebase-auth'],
+                    null,
+                    true
+                );
+                
+                // Firebase UI CSS
+                wp_enqueue_style(
+                    'firebaseui-css',
+                    'https://www.gstatic.com/firebasejs/ui/6.0.0/firebase-ui-auth.css',
+                    [],
+                    null
+                );
             }
             
             // Our custom Firebase handler
@@ -145,7 +152,7 @@ class FirebaseAuth {
                 'supafaya-firebase',
                 SUPAFAYA_PLUGIN_URL . 'assets/js/firebase-auth.js',
                 ['jquery', 'firebase-auth'],
-                SUPAFAYA_VERSION,
+                SUPAFAYA_VERSION . '.' . time(), // Add timestamp to bust cache
                 true
             );
             
@@ -161,8 +168,13 @@ class FirebaseAuth {
                 'nonce' => wp_create_nonce('supafaya-firebase-nonce'),
                 'redirectUrl' => $this->get_redirect_url(),
                 'profileUrl' => $profile_url,
-                'siteUrl' => site_url()
+                'siteUrl' => site_url(),
+                'debug' => true // Add debug flag
             ]);
+            
+            error_log('Firebase scripts enqueued');
+        } else {
+            error_log('Not loading Firebase scripts on this page');
         }
     }
     
@@ -532,8 +544,61 @@ class FirebaseAuth {
             'button_class' => 'supafaya-login-button',
         ], $atts);
         
+        // IMPORTANT: Force-load the Firebase scripts directly when the shortcode is used
+        $this->force_load_firebase_scripts();
+        
         ob_start();
         include SUPAFAYA_PLUGIN_DIR . 'templates/user-dropdown.php';
         return ob_get_clean();
+    }
+    
+    /**
+     * Force load Firebase scripts on demand
+     */
+    private function force_load_firebase_scripts() {
+        // Firebase core
+        wp_enqueue_script(
+            'firebase-app',
+            'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js',
+            [],
+            null,
+            false // Load in header
+        );
+        
+        // Firebase auth
+        wp_enqueue_script(
+            'firebase-auth',
+            'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js',
+            ['firebase-app'],
+            null,
+            false // Load in header
+        );
+        
+        // Our custom Firebase handler
+        wp_enqueue_script(
+            'supafaya-firebase',
+            SUPAFAYA_PLUGIN_URL . 'assets/js/firebase-auth.js',
+            ['jquery', 'firebase-auth'],
+            SUPAFAYA_VERSION . '.' . time(), // Add timestamp to bust cache
+            false // Load in header
+        );
+        
+        // Get profile URL
+        $profile_url = get_option('supafaya_profile_page_url', home_url());
+        
+        // Pass Firebase config to JavaScript
+        $firebase_config = [
+            'apiKey' => get_option('supafaya_firebase_api_key', ''),
+            'authDomain' => get_option('supafaya_firebase_auth_domain', ''),
+            'projectId' => get_option('supafaya_firebase_project_id', ''),
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('supafaya-firebase-nonce'),
+            'redirectUrl' => $this->get_redirect_url(),
+            'profileUrl' => $profile_url,
+            'siteUrl' => site_url(),
+            'debug' => true // Add debug flag
+        ];
+        
+        wp_localize_script('supafaya-firebase', 'supafayaFirebase', $firebase_config);
     }
 } 
