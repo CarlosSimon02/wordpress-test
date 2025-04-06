@@ -73,11 +73,15 @@ class Plugin {
             }
         }
         
+        // Get profile URL
+        $profile_url = get_option('supafaya_profile_page_url', home_url());
+        
         wp_localize_script('supafaya-tickets-script', 'supafayaTickets', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('supafaya-tickets-nonce'),
             'pluginUrl' => SUPAFAYA_PLUGIN_URL,
-            'loginUrl' => $login_url
+            'loginUrl' => $login_url,
+            'profileUrl' => $profile_url
         ]);
         
         // Enqueue the script whenever the shortcode is used
@@ -105,7 +109,8 @@ class Plugin {
             has_shortcode($post->post_content, 'supafaya_ticket_checkout') || 
             has_shortcode($post->post_content, 'supafaya_my_tickets') ||
             has_shortcode($post->post_content, 'supafaya_firebase_login') ||
-            has_shortcode($post->post_content, 'supafaya_firebase_logout')
+            has_shortcode($post->post_content, 'supafaya_firebase_logout') ||
+            has_shortcode($post->post_content, 'supafaya_user_dropdown')
         )) {
             $load_script = true;
         }
@@ -155,6 +160,7 @@ class Plugin {
         register_setting('supafaya_tickets_options', 'supafaya_organization_id');
         register_setting('supafaya_tickets_options', 'supafaya_event_page_url');
         register_setting('supafaya_tickets_options', 'supafaya_login_page_url');
+        register_setting('supafaya_tickets_options', 'supafaya_profile_page_url');
         
         // Firebase settings
         register_setting('supafaya_tickets_options', 'supafaya_firebase_api_key');
@@ -211,6 +217,19 @@ class Plugin {
                 $value = get_option('supafaya_event_page_url', '');
                 echo '<input type="text" name="supafaya_event_page_url" value="' . esc_attr($value) . '" class="regular-text">';
                 echo '<p class="description">Enter the full URL of your event details page. This is where users will be directed when clicking "View Details".</p>';
+            },
+            'supafaya-tickets-settings',
+            'supafaya_tickets_main'
+        );
+        
+        // Add the profile page URL field after the login page URL field
+        add_settings_field(
+            'supafaya_profile_page_url',
+            'Profile Page URL',
+            function() {
+                $value = get_option('supafaya_profile_page_url', '');
+                echo '<input type="text" name="supafaya_profile_page_url" value="' . esc_attr($value) . '" class="regular-text">';
+                echo '<p class="description">Enter the full URL of your user profile page. Leave empty to use the home page.</p>';
             },
             'supafaya-tickets-settings',
             'supafaya_tickets_main'

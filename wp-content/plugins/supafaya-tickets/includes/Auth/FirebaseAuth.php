@@ -19,9 +19,10 @@ class FirebaseAuth {
         add_action('wp_ajax_supafaya_firebase_auth', [$this, 'handle_firebase_auth']);
         add_action('wp_ajax_nopriv_supafaya_firebase_auth', [$this, 'handle_firebase_auth']);
         
-        // Add shortcode for login/logout forms
+        // Add shortcodes
         add_shortcode('supafaya_firebase_login', [$this, 'firebase_login_shortcode']);
         add_shortcode('supafaya_firebase_logout', [$this, 'firebase_logout_shortcode']);
+        add_shortcode('supafaya_user_dropdown', [$this, 'user_dropdown_shortcode']);
         
         // Enqueue Firebase scripts
         add_action('wp_enqueue_scripts', [$this, 'enqueue_firebase_scripts']);
@@ -122,21 +123,21 @@ class FirebaseAuth {
             
             // Firebase UI (only needed on login page)
             if (has_shortcode($post->post_content, 'supafaya_firebase_login')) {
-                wp_enqueue_script(
-                    'firebaseui',
-                    'https://www.gstatic.com/firebasejs/ui/6.0.0/firebase-ui-auth.js',
-                    ['firebase-auth'],
-                    null,
-                    true
-                );
-                
-                // Firebase UI CSS
-                wp_enqueue_style(
-                    'firebaseui-css',
-                    'https://www.gstatic.com/firebasejs/ui/6.0.0/firebase-ui-auth.css',
-                    [],
-                    null
-                );
+            wp_enqueue_script(
+                'firebaseui',
+                'https://www.gstatic.com/firebasejs/ui/6.0.0/firebase-ui-auth.js',
+                ['firebase-auth'],
+                null,
+                true
+            );
+            
+            // Firebase UI CSS
+            wp_enqueue_style(
+                'firebaseui-css',
+                'https://www.gstatic.com/firebasejs/ui/6.0.0/firebase-ui-auth.css',
+                [],
+                null
+            );
             }
             
             // Our custom Firebase handler
@@ -148,6 +149,9 @@ class FirebaseAuth {
                 true
             );
             
+            // Get profile URL
+            $profile_url = get_option('supafaya_profile_page_url', home_url());
+            
             // Pass Firebase config to JavaScript
             wp_localize_script('supafaya-firebase', 'supafayaFirebase', [
                 'apiKey' => get_option('supafaya_firebase_api_key', ''),
@@ -156,6 +160,7 @@ class FirebaseAuth {
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('supafaya-firebase-nonce'),
                 'redirectUrl' => $this->get_redirect_url(),
+                'profileUrl' => $profile_url,
                 'siteUrl' => site_url()
             ]);
         }
@@ -516,5 +521,19 @@ class FirebaseAuth {
     private function encrypt_data($data) {
         $key = AUTH_KEY ?? 'supafaya-secure-key';
         return base64_encode(openssl_encrypt($data, 'AES-256-CBC', $key, 0, substr($key, 0, 16)));
+    }
+    
+    /**
+     * User dropdown shortcode
+     */
+    public function user_dropdown_shortcode($atts) {
+        $atts = shortcode_atts([
+            'button_text' => 'Log In',
+            'button_class' => 'supafaya-login-button',
+        ], $atts);
+        
+        ob_start();
+        include SUPAFAYA_PLUGIN_DIR . 'templates/user-dropdown.php';
+        return ob_get_clean();
     }
 } 

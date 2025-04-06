@@ -149,6 +149,20 @@
                 console.error('Sign Out Error', error);
             });
         });
+
+        // Handle user dropdown toggle
+        $(document).on('click', '.user-dropdown-toggle', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $('.supafaya-user-dropdown').toggleClass('open');
+        });
+
+        // Close dropdown when clicking outside
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('.supafaya-user-dropdown').length) {
+                $('.supafaya-user-dropdown').removeClass('open');
+            }
+        });
     });
 
     // Setup AJAX interceptor to include Firebase token in all requests

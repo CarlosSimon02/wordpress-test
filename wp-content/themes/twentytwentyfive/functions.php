@@ -156,3 +156,18 @@ if ( ! function_exists( 'twentytwentyfive_format_binding' ) ) :
 		}
 	}
 endif;
+
+// Add shortcode support to menus
+function supafaya_menu_shortcode_support($items) {
+	return do_shortcode($items);
+}
+add_filter('wp_nav_menu_items', 'supafaya_menu_shortcode_support');
+
+// Add the user dropdown to the end of the primary menu
+function supafaya_add_user_dropdown_to_menu($items, $args) {
+	if ($args->theme_location == 'primary') { // Replace 'primary' with your menu location
+		$items .= do_shortcode('[supafaya_user_dropdown]');
+	}
+	return $items;
+}
+add_filter('wp_nav_menu_items', 'supafaya_add_user_dropdown_to_menu', 10, 2);
