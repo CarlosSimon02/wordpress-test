@@ -557,6 +557,7 @@
         function clearCart() {
             debug('Clearing cart');
             try {
+                // Clear from localStorage
                 const allCarts = JSON.parse(localStorage.getItem('supafaya_carts') || '{}');
                 delete allCarts[currentEventId];
                 localStorage.setItem('supafaya_carts', JSON.stringify(allCarts));
@@ -564,7 +565,29 @@
                 // Update the UI to reflect empty cart
                 $('.summary-items').empty();
                 $('.total-amount').text('₱0.00');
-                $('.checkout-button, .proof-of-payment-button').prop('disabled', true);
+                
+                // Also update the in-memory cart object if it exists
+                if (window.cart) {
+                    window.cart.tickets = {};
+                    window.cart.addons = {};
+                    window.cart.total = 0;
+                    debug('In-memory cart object cleared');
+                }
+                
+                // Explicitly call updateOrderSummary to ensure checkout button is hidden
+                if (typeof window.updateOrderSummary === 'function') {
+                    window.updateOrderSummary();
+                    debug('updateOrderSummary called to hide checkout button');
+                } else {
+                    // Fallback: manually hide the checkout button
+                    $('.checkout-button').hide().prop('disabled', true);
+                    debug('Manually hiding checkout button as fallback');
+                }
+                
+                // Trigger cart:updated event to ensure all components update properly
+                $(document).trigger('cart:updated');
+                
+                debug('Cart cleared and cart:updated event triggered');
             } catch (e) {
                 debug('Error clearing cart', e);
             }

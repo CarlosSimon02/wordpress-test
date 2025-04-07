@@ -219,6 +219,9 @@
         // Reference to the current event's cart
         const cart = allCarts[currentEventId];
         
+        // Make cart accessible globally for other scripts
+        window.cart = cart;
+        
         // Save all carts to localStorage
         function saveCartsToStorage() {
             console.log('Saving carts to localStorage:', allCarts);
@@ -597,6 +600,7 @@
             });
         });
 
+        // Update order summary in the sidebar
         function updateOrderSummary() {
             const summaryContainer = $('.summary-items');
             let html = '';
@@ -657,11 +661,14 @@
 
             // Show or hide checkout button based on cart contents
             if (totalItems > 0) {
-                $('.checkout-button').show();
+                $('.checkout-button').show().prop('disabled', false);
             } else {
-                $('.checkout-button').hide();
+                $('.checkout-button').hide().prop('disabled', true);
             }
         }
+
+        // Make updateOrderSummary globally accessible
+        window.updateOrderSummary = updateOrderSummary;
 
         // Remove items from cart
         $(document).on('click', '.remove-item', function() {
