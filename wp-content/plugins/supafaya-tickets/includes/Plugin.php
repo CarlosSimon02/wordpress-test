@@ -412,7 +412,6 @@ class Plugin {
             function() {
                 $value = get_option('supafaya_firebase_storage_bucket', '');
                 echo '<input type="text" name="supafaya_firebase_storage_bucket" value="' . esc_attr($value) . '" class="regular-text">';
-                echo '<p class="description">Example: your-app.appspot.com (not the firebasestorage.app URL)</p>';
             },
             'supafaya-tickets-settings',
             'supafaya_tickets_firebase'
