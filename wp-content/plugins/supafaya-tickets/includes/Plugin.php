@@ -33,6 +33,7 @@ class Plugin {
         add_shortcode('supafaya_login_form', array($this, 'login_form_shortcode'));
         add_shortcode('supafaya_user_dropdown', array($this, 'user_dropdown_shortcode'));
         add_shortcode('supafaya_payment_result', array($this, 'payment_result_shortcode'));
+        add_shortcode('supafaya_payment_history', array($this, 'payment_history_shortcode'));
         
         // Register AJAX actions
         add_action('wp_ajax_supafaya_get_events', array($this->event_controller, 'ajax_get_events'));
@@ -151,7 +152,8 @@ class Plugin {
             has_shortcode($post->post_content, 'supafaya_firebase_login') ||
             has_shortcode($post->post_content, 'supafaya_firebase_logout') ||
             has_shortcode($post->post_content, 'supafaya_user_dropdown') ||
-            has_shortcode($post->post_content, 'supafaya_payment_result')
+            has_shortcode($post->post_content, 'supafaya_payment_result') ||
+            has_shortcode($post->post_content, 'supafaya_payment_history')
         )) {
             $load_script = true;
         }
@@ -184,6 +186,17 @@ class Plugin {
                 wp_enqueue_script(
                     'supafaya-purchased-items',
                     SUPAFAYA_PLUGIN_URL . 'assets/js/purchased-items.js',
+                    ['jquery', 'supafaya-tickets-script'],
+                    SUPAFAYA_VERSION,
+                    true
+                );
+            }
+            
+            // Enqueue the payment history script when the shortcode is used
+            if ($post && has_shortcode($post->post_content, 'supafaya_payment_history')) {
+                wp_enqueue_script(
+                    'supafaya-payment-history',
+                    SUPAFAYA_PLUGIN_URL . 'assets/js/payment-history.js',
                     ['jquery', 'supafaya-tickets-script'],
                     SUPAFAYA_VERSION,
                     true
@@ -391,20 +404,30 @@ class Plugin {
     }
     
     /**
-     * Shortcode for payment result page
+     * Payment result shortcode
      */
-    public function payment_result_shortcode($atts) {
+    public function payment_result_shortcode($atts, $content = null) {
+        // Extract shortcode attributes
         $atts = shortcode_atts([
-            'template' => 'default'
+            'status' => '',
+            'transaction_id' => '',
+            'event_id' => ''
         ], $atts);
         
-        // Get status from URL
-        $status = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
-        $transaction_id = isset($_GET['transaction_id']) ? sanitize_text_field($_GET['transaction_id']) : '';
-        
-        // Load the appropriate template
+        // Load the template
         ob_start();
-        include SUPAFAYA_PLUGIN_DIR . 'templates/payment-result-' . $atts['template'] . '.php';
+        include SUPAFAYA_PLUGIN_DIR . 'templates/payment-result-default.php';
         return ob_get_clean();
+    }
+    
+    /**
+     * Payment history shortcode
+     */
+    public function payment_history_shortcode($atts) {
+        if (isset($this->ticket_controller) && method_exists($this->ticket_controller, 'payment_history_shortcode')) {
+            return $this->ticket_controller->payment_history_shortcode($atts);
+        }
+        
+        return '<p>Payment history feature is not available.</p>';
     }
 }

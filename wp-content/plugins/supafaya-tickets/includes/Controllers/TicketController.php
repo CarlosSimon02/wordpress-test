@@ -23,10 +23,12 @@ class TicketController
     // Register shortcodes
     add_shortcode('supafaya_ticket_checkout', [$this, 'ticket_checkout_shortcode']);
     add_shortcode('supafaya_my_tickets', [$this, 'my_tickets_shortcode']);
+    add_shortcode('supafaya_payment_history', [$this, 'payment_history_shortcode']);
 
     // Register AJAX handlers for both logged in and not logged in users
     add_action('wp_ajax_supafaya_purchase_ticket', [$this, 'ajax_purchase_ticket']);
     add_action('wp_ajax_nopriv_supafaya_purchase_ticket', [$this, 'ajax_purchase_ticket']);
+    add_action('wp_ajax_supafaya_load_payment_history', [$this, 'ajax_load_payment_history']);
   }
 
   /**
@@ -118,6 +120,201 @@ class TicketController
     ob_start();
     include SUPAFAYA_PLUGIN_DIR . 'templates/my-tickets.php';
     return ob_get_clean();
+  }
+
+  /**
+   * Shortcode for displaying payment history
+   */
+  public function payment_history_shortcode($atts)
+  {
+    // Get default organization ID from settings
+    $default_org_id = get_option('supafaya_organization_id', '');
+    
+    $atts = shortcode_atts([
+      'organization_id' => $default_org_id,
+      'limit' => 10,
+      'page' => 1,
+    ], $atts);
+    
+    // Debug logging
+    error_log('Payment History Shortcode called with args: ' . json_encode($atts));
+
+    // Check if Firebase user is logged in via cookie
+    $firebase_logged_in = isset($_COOKIE['firebase_user_token']);
+    if (!$firebase_logged_in) {
+      // Redirect to login page
+      $login_url = get_option('supafaya_login_page_url', home_url());
+      error_log('Payment History: User not logged in, redirecting to ' . $login_url);
+      return '<p>Please <a href="' . esc_url($login_url) . '">login</a> to view your payment history</p>';
+    }
+
+    // Get the firebase token from the cookie
+    $firebase_token = $this->get_firebase_token();
+    if (!$firebase_token) {
+      error_log('Payment History: Failed to get Firebase token');
+      return '<p>Authentication error. Please try logging in again.</p>';
+    }
+    
+    // Use the Firebase token for API requests
+    $this->api_client->setToken($firebase_token);
+
+    // Also try to get the Firebase user info from cookie if available
+    $user_info = '';
+    if (isset($_COOKIE['firebase_user'])) {
+      $user_data = json_decode(stripslashes($_COOKIE['firebase_user']), true);
+      if ($user_data && isset($user_data['email'])) {
+        $user_info = 'Logged in as: ' . esc_html($user_data['email']);
+      }
+    }
+
+    // Prepare to display the template
+    wp_enqueue_script('supafaya-payment-history', SUPAFAYA_PLUGIN_URL . 'assets/js/payment-history.js', array('jquery'), SUPAFAYA_VERSION, true);
+    
+    // Localize script with needed data
+    $script_data = array(
+      'ajaxUrl' => admin_url('admin-ajax.php'),
+      'nonce' => wp_create_nonce('supafaya-tickets-nonce'),
+      'organizationId' => esc_attr($atts['organization_id']),
+      'limit' => intval($atts['limit']),
+      'currentPage' => intval($atts['page']),
+      'debug' => defined('WP_DEBUG') && WP_DEBUG,
+      'userInfo' => $user_info
+    );
+    wp_localize_script('supafaya-payment-history', 'supafayaPaymentHistory', $script_data);
+    
+    // Log debug info
+    error_log('Payment History: Template ready to load, using organization_id: ' . $atts['organization_id']);
+    
+    // Load the template
+    ob_start();
+    include SUPAFAYA_PLUGIN_DIR . 'templates/payment-history.php';
+    return ob_get_clean();
+  }
+  
+  /**
+   * AJAX handler for loading payment history
+   */
+  public function ajax_load_payment_history()
+  {
+    error_log('AJAX Payment History: Request received');
+    
+    // Verify nonce
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'supafaya-tickets-nonce')) {
+      error_log('AJAX Payment History: Nonce verification failed');
+      wp_send_json(array(
+        'success' => false,
+        'message' => 'Security verification failed'
+      ));
+      return;
+    }
+    
+    // Get parameters
+    $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
+    $limit = isset($_POST['limit']) ? intval($_POST['limit']) : 10;
+    $organization_id = isset($_POST['organization_id']) ? sanitize_text_field($_POST['organization_id']) : '';
+    
+    error_log('AJAX Payment History: Parameters - page: ' . $page . ', limit: ' . $limit . ', organization_id: ' . $organization_id);
+    
+    // Get Firebase token
+    $firebase_token = $this->get_firebase_token();
+    if (!$firebase_token) {
+      error_log('AJAX Payment History: Failed to get Firebase token');
+      wp_send_json(array(
+        'success' => false,
+        'message' => 'Authentication required'
+      ));
+      return;
+    }
+    
+    // Set token for API requests
+    $this->api_client->setToken($firebase_token);
+    
+    // Prepare query parameters
+    $query_params = array(
+      'page' => $page,
+      'limit' => $limit
+    );
+    
+    if (!empty($organization_id)) {
+      $query_params['organizationId'] = $organization_id;
+    }
+    
+    error_log('AJAX Payment History: Query parameters: ' . json_encode($query_params));
+    
+    // Get the user ID from Firebase token claims
+    try {
+      // Instead of using the Firebase PHP SDK which isn't available, 
+      // we'll manually decode the JWT token to get the user ID
+      error_log('AJAX Payment History: Manually decoding the token to get user ID');
+      
+      // JWT tokens are in the format: header.payload.signature
+      $token_parts = explode('.', $firebase_token);
+      if (count($token_parts) !== 3) {
+        throw new \Exception('Invalid token format');
+      }
+      
+      // The second part is the payload, which is base64 encoded
+      $payload = base64_decode(str_replace(['-', '_'], ['+', '/'], $token_parts[1]));
+      if (!$payload) {
+        throw new \Exception('Could not decode token payload');
+      }
+      
+      $payload_data = json_decode($payload, true);
+      if (!$payload_data || !isset($payload_data['sub'])) {
+        throw new \Exception('Invalid token payload or missing user ID');
+      }
+      
+      $user_id = $payload_data['sub'];
+      error_log('AJAX Payment History: Successfully extracted user ID: ' . $user_id);
+      
+      // Call API to get payment history
+      error_log('AJAX Payment History: Calling API endpoint: /payments/user/' . $user_id . '/history');
+      $response = $this->api_client->get('/payments/user/' . $user_id . '/history', $query_params);
+      
+      error_log('AJAX Payment History: API response received, success: ' . ($response['success'] ? 'true' : 'false'));
+      error_log('AJAX Payment History: Full API response structure: ' . json_encode($response));
+      
+      if ($response['success']) {
+        // Log summary of results - Fix the nested data structure access
+        $api_data = $response['data']['data'] ?? [];
+        $results_count = isset($api_data['payments']) ? count($api_data['payments']) : 0;
+        $pagination = isset($api_data['pagination']) ? $api_data['pagination'] : [];
+        
+        error_log('AJAX Payment History: Returning ' . $results_count . ' results. Pagination: ' . json_encode($pagination));
+        
+        wp_send_json($response);
+      } else {
+        error_log('AJAX Payment History: API error: ' . ($response['message'] ?? 'Unknown error'));
+        wp_send_json(array(
+          'success' => false,
+          'message' => $response['message'] ?? 'Failed to load payment history'
+        ));
+      }
+    } catch (\Exception $e) {
+      error_log('AJAX Payment History: Exception: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+      wp_send_json(array(
+        'success' => false,
+        'message' => 'Authentication error: ' . $e->getMessage()
+      ));
+    }
+  }
+  
+  /**
+   * Helper to get Firebase token from various sources
+   */
+  private function get_firebase_token()
+  {
+    // Try to get from cookie first
+    if (isset($_COOKIE['firebase_user_token'])) {
+      return $_COOKIE['firebase_user_token'];
+    }
+    
+    // Try to get from request header (for AJAX)
+    if (isset($_SERVER['HTTP_X_FIREBASE_TOKEN'])) {
+      return $_SERVER['HTTP_X_FIREBASE_TOKEN'];
+    }
+    
+    return null;
   }
 
   /**
@@ -372,28 +569,5 @@ class TicketController
     error_log('User data for purchase: ' . print_r($user_data, true));
     
     return $user_data;
-  }
-
-  /**
-   * Get Firebase token from request
-   */
-  private function get_firebase_token() {
-    // Check if token is in header
-    $headers = function_exists('getallheaders') ? getallheaders() : [];
-    if (isset($headers['X-Firebase-Token'])) {
-        return $headers['X-Firebase-Token'];
-    }
-    
-    // Check if token is in cookie
-    if (isset($_COOKIE['firebase_user_token'])) {
-        return $_COOKIE['firebase_user_token'];
-    }
-    
-    // Check if token is in POST data
-    if (isset($_POST['firebase_token'])) {
-        return sanitize_text_field($_POST['firebase_token']);
-    }
-    
-    return null;
   }
 }
