@@ -321,7 +321,7 @@
             const ticketItem = $(this).closest('.ticket-item');
             const ticketId = $(this).data('ticket-id');
             const ticketName = ticketItem.find('.ticket-name').text();
-            const ticketPrice = parseFloat(ticketItem.find('.ticket-price').text().replace('₱', '').replace('$', '').replace(',', ''));
+            const ticketPrice = parseFloat(ticketItem.find('.ticket-price').text().replace('฿', '').replace('$', '').replace(',', ''));
             const quantityToAdd = parseInt(ticketItem.find('.ticket-quantity').val() || 1);
             
             console.log('Ticket details:', { ticketId, ticketName, ticketPrice, quantityToAdd });
@@ -365,7 +365,7 @@
             const addonItem = $(this).closest('.addon-item');
             const addonId = $(this).data('addon-id');
             const addonName = addonItem.find('.ticket-name').text();
-            const addonPrice = parseFloat(addonItem.find('.ticket-price').text().replace('₱', '').replace('$', '').replace(',', ''));
+            const addonPrice = parseFloat(addonItem.find('.ticket-price').text().replace('฿', '').replace('$', '').replace(',', ''));
             const quantityToAdd = parseInt(addonItem.find('.addon-quantity, .ticket-quantity').val() || 1);
 
             // Add to cart
@@ -620,7 +620,7 @@
                             <span class="item-name">${ticket.name}</span>
                             <span class="item-quantity">x${ticket.quantity}</span>
                         </div>
-                        <div class="item-price">₱${itemTotal.toFixed(2)}</div>
+                        <div class="item-price">฿${itemTotal.toFixed(2)}</div>
                         <button class="remove-item" title="Remove item">×</button>
                     </div>
                 `;
@@ -639,7 +639,7 @@
                             <span class="item-name">${addon.name} (Add-on)</span>
                             <span class="item-quantity">x${addon.quantity}</span>
                         </div>
-                        <div class="item-price">₱${itemTotal.toFixed(2)}</div>
+                        <div class="item-price">฿${itemTotal.toFixed(2)}</div>
                         <button class="remove-item" title="Remove item">×</button>
                     </div>
                 `;
@@ -651,7 +651,7 @@
             }
 
             summaryContainer.html(html);
-            $('.total-amount').text(`₱${total.toFixed(2)}`);
+            $('.total-amount').text(`฿${total.toFixed(2)}`);
             cart.total = total;
 
             // Update cart count if there's an element for it
@@ -727,7 +727,7 @@
             console.log('Cart total updated to:', total);
             
             // Update UI
-            $('.total-amount').text(`₱${total.toFixed(2)}`);
+            $('.total-amount').text(`฿${total.toFixed(2)}`);
         }
         
         // Helper function to add ticket to cart

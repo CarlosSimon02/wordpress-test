@@ -74,6 +74,7 @@ class TicketService {
                 'failed' => $ticket_data['payment_redirect_urls']['failed'] ?? site_url('/payment-failed'),
                 'cancel' => $ticket_data['payment_redirect_urls']['cancel'] ?? site_url('/payment-cancelled')
             ],
+            'currency' => 'thb',
             'organizationId' => get_option('supafaya_organization_id', '')
         ];
         

@@ -204,6 +204,7 @@ class PaymentProofController {
                 'failed' => site_url('/payment-failed'),
                 'cancel' => site_url('/payment-cancelled')
             ],
+            'currency' => 'thb',
             'organizationId' => get_option('supafaya_organization_id', '')
         ];
         

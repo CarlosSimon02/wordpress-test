@@ -345,7 +345,7 @@
                     const price = $('<div class="item-price">');
                     if (item.price > 0) {
                         // Use currency if available, default to PHP
-                        const currencySymbol = item.currency === 'USD' ? '$' : '₱';
+                        const currencySymbol = item.currency === 'USD' ? '$' : '฿';
                         price.text(currencySymbol + parseFloat(item.price).toFixed(2));
                     } else {
                         price.text('Free');
@@ -368,7 +368,7 @@
                     // Price for addons
                     const price = $('<div class="item-price">');
                     if (item.price > 0) {
-                        price.text('₱' + parseFloat(item.price).toFixed(2));
+                        price.text('฿' + parseFloat(item.price).toFixed(2));
                     } else {
                         price.text('Free');
                     }

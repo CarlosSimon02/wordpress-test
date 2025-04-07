@@ -126,7 +126,7 @@
                                             <?php if (!empty($ticket_desc)): ?>
                                                 <p class="ticket-description"><?php echo esc_html($ticket_desc); ?></p>
                                             <?php endif; ?>
-                                            <div class="ticket-price">₱<?php echo number_format($ticket_price, 2); ?></div>
+                                            <div class="ticket-price">฿<?php echo number_format($ticket_price, 2); ?></div>
                                         </div>
 
                                         <div class="ticket-actions">
@@ -167,7 +167,7 @@
                                             <?php if (!empty($addon['description'])): ?>
                                                 <p class="ticket-description"><?php echo esc_html($addon['description']); ?></p>
                                             <?php endif; ?>
-                                            <div class="ticket-price">₱<?php echo number_format($addon['price'], 2); ?></div>
+                                            <div class="ticket-price">฿<?php echo number_format($addon['price'], 2); ?></div>
                                         </div>
 
                                         <div class="ticket-actions">
@@ -205,7 +205,7 @@
                             </div>
                             <div class="summary-total">
                                 <span>Total:</span>
-                                <span class="total-amount">₱0.00</span>
+                                <span class="total-amount">฿0.00</span>
                             </div>
                             <button class="checkout-button">Proceed to Checkout</button>
                         </div>

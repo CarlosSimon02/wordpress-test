@@ -133,7 +133,7 @@
                                         </div>
                                         <div class="cart-total">
                                             <span>Total:</span>
-                                            <span class="pop-total-amount">₱0.00</span>
+                                            <span class="pop-total-amount">฿0.00</span>
                                         </div>
                                     </div>
                                 </div>
@@ -309,7 +309,7 @@
             
             if (!cartData) {
                 cartItemsList.html('<p class="empty-cart">Your cart is empty</p>');
-                popTotalAmount.text('₱0.00');
+                popTotalAmount.text('฿0.00');
                 return;
             }
             
@@ -332,7 +332,7 @@
                                 <div class="item-name">${ticket.name}</div>
                                 <div class="item-quantity">x${quantity}</div>
                             </div>
-                            <div class="item-price">₱${subtotal.toFixed(2)}</div>
+                            <div class="item-price">฿${subtotal.toFixed(2)}</div>
                         </div>
                     `;
                 });
@@ -354,7 +354,7 @@
                                 <div class="item-name">${addon.name} (Add-on)</div>
                                 <div class="item-quantity">x${quantity}</div>
                             </div>
-                            <div class="item-price">₱${subtotal.toFixed(2)}</div>
+                            <div class="item-price">฿${subtotal.toFixed(2)}</div>
                         </div>
                     `;
                 });
@@ -366,7 +366,7 @@
                 cartItemsList.html(itemsHtml);
             }
             
-            popTotalAmount.text(`₱${totalAmount.toFixed(2)}`);
+            popTotalAmount.text(`฿${totalAmount.toFixed(2)}`);
         }
         
         // Close the dialog
@@ -528,7 +528,7 @@
                 
                 // Update the UI to reflect empty cart
                 $('.summary-items').empty();
-                $('.total-amount').text('₱0.00');
+                $('.total-amount').text('฿0.00');
                 
                 // Also update the in-memory cart object if it exists
                 if (window.cart) {
