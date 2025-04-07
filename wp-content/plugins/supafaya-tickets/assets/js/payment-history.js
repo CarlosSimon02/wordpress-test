@@ -1,4 +1,3 @@
-
 (function($) {
   'use strict';
   
@@ -180,7 +179,7 @@
               });
               
               html += `
-                  <div class="payment-item" data-id="${payment.id}">
+                  <div class="payment-item" data-id="${payment.id}" data-payment='${JSON.stringify(payment)}'>
                       <div class="payment-info">
                           <div class="payment-event">${escapeHtml(eventName)}</div>
                           <div class="payment-time">
@@ -378,61 +377,86 @@
           // Find the payment in the DOM
           const paymentItem = historyList.find(`.payment-item[data-id="${paymentId}"]`);
           if (paymentItem.length) {
-              // Get payment data from the DOM - Later we can replace this with an API call
+              // Get payment data from the DOM
               const eventName = paymentItem.find('.payment-event').text();
               const date = paymentItem.find('.payment-time').text().trim();
               const amount = paymentItem.find('.payment-amount').text();
               const status = paymentItem.find('.payment-status').text();
               
-              // Load full payment details via AJAX in a real scenario
-              // For now, we'll just display the data we have
-              setTimeout(() => {
-                  const detailHtml = `
-                      <div class="payment-detail-section">
-                          <h4 class="detail-section-title">Payment Information</h4>
-                          <div class="detail-row">
-                              <div class="detail-label">Transaction ID</div>
-                              <div class="detail-value">${paymentId}</div>
-                          </div>
-                          <div class="detail-row">
-                              <div class="detail-label">Event</div>
-                              <div class="detail-value">${eventName}</div>
-                          </div>
-                          <div class="detail-row">
-                              <div class="detail-label">Date</div>
-                              <div class="detail-value">${date}</div>
-                          </div>
-                          <div class="detail-row">
-                              <div class="detail-label">Amount</div>
-                              <div class="detail-value">${amount}</div>
-                          </div>
-                          <div class="detail-row">
-                              <div class="detail-label">Status</div>
-                              <div class="detail-value">${status}</div>
-                          </div>
+              // Find the payment in our current data
+              const payment = historyList.find(`.payment-item[data-id="${paymentId}"]`).data('payment');
+              if (!payment) {
+                  dialogContent.html('<p>Payment details not found.</p>');
+                  return;
+              }
+              
+              const detailHtml = `
+                  <div class="payment-detail-section">
+                      <h4 class="detail-section-title">Payment Information</h4>
+                      <div class="detail-row">
+                          <div class="detail-label">Transaction ID</div>
+                          <div class="detail-value">${payment.id}</div>
                       </div>
-                      
-                      <div class="payment-detail-section">
-                          <h4 class="detail-section-title">Purchased Items</h4>
-                          <div class="ticket-item">
-                              <div class="ticket-name">General Admission</div>
-                              <div class="ticket-details">
-                                  <span>2 × Regular Ticket</span>
-                                  <span>${formatCurrency(100, 'USD')}</span>
-                              </div>
-                          </div>
-                          <div class="ticket-item">
-                              <div class="ticket-name">Merchandise</div>
-                              <div class="ticket-details">
-                                  <span>1 × Event T-shirt</span>
-                                  <span>${formatCurrency(25, 'USD')}</span>
-                              </div>
-                          </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Event</div>
+                          <div class="detail-value">${eventName}</div>
                       </div>
-                  `;
+                      <div class="detail-row">
+                          <div class="detail-label">Date</div>
+                          <div class="detail-value">${date}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Amount</div>
+                          <div class="detail-value">${amount}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Status</div>
+                          <div class="detail-value">${status}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Payment Method</div>
+                          <div class="detail-value">${payment.method}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Provider</div>
+                          <div class="detail-value">${payment.provider}</div>
+                      </div>
+                  </div>
                   
-                  dialogContent.html(detailHtml);
-              }, 1000);
+                  <div class="payment-detail-section">
+                      <h4 class="detail-section-title">Purchased Items</h4>
+                      ${payment.items.map(item => `
+                          <div class="ticket-item">
+                              <div class="ticket-name">${escapeHtml(item.name)}</div>
+                              <div class="ticket-details">
+                                  <span>${item.quantity} × ${item.type}</span>
+                                  ${item.ticketType ? `<span class="ticket-type">${item.ticketType}</span>` : ''}
+                                  <span>${formatCurrency(item.unitPrice, payment.currency)}</span>
+                              </div>
+                          </div>
+                      `).join('')}
+                  </div>
+                  
+                  <div class="payment-detail-section">
+                      <h4 class="detail-section-title">Customer Information</h4>
+                      <div class="detail-row">
+                          <div class="detail-label">Name</div>
+                          <div class="detail-value">${escapeHtml(payment.customer.name)}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Email</div>
+                          <div class="detail-value">${escapeHtml(payment.customer.email)}</div>
+                      </div>
+                      ${payment.customer.phone ? `
+                          <div class="detail-row">
+                              <div class="detail-label">Phone</div>
+                              <div class="detail-value">${escapeHtml(payment.customer.phone)}</div>
+                          </div>
+                      ` : ''}
+                  </div>
+              `;
+              
+              dialogContent.html(detailHtml);
           } else {
               dialogContent.html('<p>Payment details not found.</p>');
           }
