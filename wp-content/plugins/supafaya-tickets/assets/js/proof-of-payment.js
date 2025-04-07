@@ -34,7 +34,7 @@
             
             // Create and insert the button
             const popButton = $(`
-                <button class="proof-of-payment-button">
+                <button class="proof-of-payment-button" disabled>
                     Send Proof of Payment
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M4 17l6-6-6-6"></path>
@@ -61,60 +61,76 @@
                             </button>
                         </div>
                         <div class="dialog-body">
-                            <form id="proof-of-payment-form">
-                                <div class="form-status"></div>
-                                
-                                <div class="form-field">
-                                    <label for="pop-name">Full Name *</label>
-                                    <input type="text" id="pop-name" name="name" required>
+                            <div class="pop-two-column">
+                                <div class="form-column">
+                                    <form id="proof-of-payment-form">
+                                        <div class="form-status"></div>
+                                        
+                                        <div class="form-field">
+                                            <label for="pop-name">Full Name *</label>
+                                            <input type="text" id="pop-name" name="name" required>
+                                        </div>
+                                        
+                                        <div class="form-field">
+                                            <label for="pop-email">Email Address *</label>
+                                            <input type="email" id="pop-email" name="email" required>
+                                        </div>
+                                        
+                                        <div class="form-field">
+                                            <label for="pop-phone">Phone Number *</label>
+                                            <input type="tel" id="pop-phone" name="phone" required>
+                                        </div>
+                                        
+                                        <div class="form-field">
+                                            <label for="pop-reference">Reference/Transaction ID *</label>
+                                            <input type="text" id="pop-reference" name="reference" required>
+                                        </div>
+                                        
+                                        <div class="form-field">
+                                            <label for="pop-bank">Bank/Payment Provider *</label>
+                                            <input type="text" id="pop-bank" name="bank" required>
+                                        </div>
+                                        
+                                        <div class="form-field">
+                                            <label for="pop-amount">Amount Paid *</label>
+                                            <input type="number" id="pop-amount" name="amount" step="0.01" required>
+                                        </div>
+                                        
+                                        <div class="form-field">
+                                            <label for="pop-date">Payment Date *</label>
+                                            <input type="date" id="pop-date" name="date" required>
+                                        </div>
+                                        
+                                        <div class="form-field file-upload">
+                                            <label for="pop-receipt">Upload Receipt/Screenshot *</label>
+                                            <input type="file" id="pop-receipt" name="receipt" accept="image/png, image/jpeg, image/jpg, application/pdf" required>
+                                            <div class="file-preview"></div>
+                                        </div>
+                                        
+                                        <div class="form-field">
+                                            <label for="pop-notes">Additional Notes</label>
+                                            <textarea id="pop-notes" name="notes"></textarea>
+                                        </div>
+                                        
+                                        <div class="form-actions">
+                                            <button type="button" class="cancel-button">Cancel</button>
+                                            <button type="submit" class="submit-button">Submit Proof</button>
+                                        </div>
+                                    </form>
                                 </div>
-                                
-                                <div class="form-field">
-                                    <label for="pop-email">Email Address *</label>
-                                    <input type="email" id="pop-email" name="email" required>
+                                <div class="cart-column">
+                                    <div class="cart-summary">
+                                        <h3>Your Order</h3>
+                                        <div class="cart-items-list">
+                                            <!-- Will be populated dynamically -->
+                                        </div>
+                                        <div class="cart-total">
+                                            <span>Total:</span>
+                                            <span class="pop-total-amount">₱0.00</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                
-                                <div class="form-field">
-                                    <label for="pop-phone">Phone Number *</label>
-                                    <input type="tel" id="pop-phone" name="phone" required>
-                                </div>
-                                
-                                <div class="form-field">
-                                    <label for="pop-reference">Reference/Transaction ID *</label>
-                                    <input type="text" id="pop-reference" name="reference" required>
-                                </div>
-                                
-                                <div class="form-field">
-                                    <label for="pop-bank">Bank/Payment Provider *</label>
-                                    <input type="text" id="pop-bank" name="bank" required>
-                                </div>
-                                
-                                <div class="form-field">
-                                    <label for="pop-amount">Amount Paid *</label>
-                                    <input type="number" id="pop-amount" name="amount" step="0.01" required>
-                                </div>
-                                
-                                <div class="form-field">
-                                    <label for="pop-date">Payment Date *</label>
-                                    <input type="date" id="pop-date" name="date" required>
-                                </div>
-                                
-                                <div class="form-field file-upload">
-                                    <label for="pop-receipt">Upload Receipt/Screenshot *</label>
-                                    <input type="file" id="pop-receipt" name="receipt" accept="image/png, image/jpeg, image/jpg, application/pdf" required>
-                                    <div class="file-preview"></div>
-                                </div>
-                                
-                                <div class="form-field">
-                                    <label for="pop-notes">Additional Notes</label>
-                                    <textarea id="pop-notes" name="notes"></textarea>
-                                </div>
-                                
-                                <div class="form-actions">
-                                    <button type="button" class="cancel-button">Cancel</button>
-                                    <button type="submit" class="submit-button">Submit Proof</button>
-                                </div>
-                            </form>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -178,11 +194,35 @@
                 e.preventDefault();
                 submitProofOfPayment(this);
             });
+            
+            // Listen for cart updates to toggle proof of payment button state
+            $(document).on('cart:updated', function() {
+                updateProofOfPaymentButton();
+            });
+        }
+        
+        // Update Proof of Payment button state based on cart contents
+        function updateProofOfPaymentButton() {
+            const cartData = getCurrentCartData();
+            const popButton = $('.proof-of-payment-button');
+            
+            if (cartData && (
+                (cartData.tickets && Object.keys(cartData.tickets).length > 0) || 
+                (cartData.addons && Object.keys(cartData.addons).length > 0)
+            )) {
+                popButton.prop('disabled', false);
+            } else {
+                popButton.prop('disabled', true);
+            }
         }
         
         // Open the dialog
         function openDialog() {
             debug('Opening proof of payment dialog');
+            
+            // Get cart data and populate the cart items section
+            populateCartItems();
+            
             $('.proof-of-payment-dialog').fadeIn(300);
             $('body').addClass('dialog-open');
             
@@ -204,6 +244,76 @@
             if (cartTotal && !isNaN(parseFloat(cartTotal))) {
                 $('#pop-amount').val(parseFloat(cartTotal));
             }
+        }
+        
+        // Populate cart items in dialog
+        function populateCartItems() {
+            const cartData = getCurrentCartData();
+            const cartItemsList = $('.cart-items-list');
+            const popTotalAmount = $('.pop-total-amount');
+            
+            cartItemsList.empty();
+            
+            if (!cartData) {
+                cartItemsList.html('<p class="empty-cart">Your cart is empty</p>');
+                popTotalAmount.text('₱0.00');
+                return;
+            }
+            
+            let totalAmount = 0;
+            let itemsHtml = '';
+            
+            // Add tickets to the list
+            if (cartData.tickets && Object.keys(cartData.tickets).length > 0) {
+                Object.keys(cartData.tickets).forEach(ticketId => {
+                    const ticket = cartData.tickets[ticketId];
+                    const quantity = ticket.quantity;
+                    const price = ticket.price;
+                    const subtotal = price * quantity;
+                    
+                    totalAmount += subtotal;
+                    
+                    itemsHtml += `
+                        <div class="cart-item">
+                            <div class="item-details">
+                                <div class="item-name">${ticket.name}</div>
+                                <div class="item-quantity">x${quantity}</div>
+                            </div>
+                            <div class="item-price">₱${subtotal.toFixed(2)}</div>
+                        </div>
+                    `;
+                });
+            }
+            
+            // Add addons to the list
+            if (cartData.addons && Object.keys(cartData.addons).length > 0) {
+                Object.keys(cartData.addons).forEach(addonId => {
+                    const addon = cartData.addons[addonId];
+                    const quantity = addon.quantity;
+                    const price = addon.price;
+                    const subtotal = price * quantity;
+                    
+                    totalAmount += subtotal;
+                    
+                    itemsHtml += `
+                        <div class="cart-item addon-item">
+                            <div class="item-details">
+                                <div class="item-name">${addon.name} (Add-on)</div>
+                                <div class="item-quantity">x${quantity}</div>
+                            </div>
+                            <div class="item-price">₱${subtotal.toFixed(2)}</div>
+                        </div>
+                    `;
+                });
+            }
+            
+            if (itemsHtml === '') {
+                cartItemsList.html('<p class="empty-cart">Your cart is empty</p>');
+            } else {
+                cartItemsList.html(itemsHtml);
+            }
+            
+            popTotalAmount.text(`₱${totalAmount.toFixed(2)}`);
         }
         
         // Close the dialog
@@ -331,7 +441,7 @@
                 // Update the UI to reflect empty cart
                 $('.summary-items').empty();
                 $('.total-amount').text('₱0.00');
-                $('.checkout-button').prop('disabled', true);
+                $('.checkout-button, .proof-of-payment-button').prop('disabled', true);
             } catch (e) {
                 debug('Error clearing cart', e);
             }
@@ -342,6 +452,7 @@
             debug('Initializing proof of payment module');
             appendProofOfPaymentUI();
             initEventListeners();
+            updateProofOfPaymentButton(); // Set initial button state
         }
         
         // Run initialization

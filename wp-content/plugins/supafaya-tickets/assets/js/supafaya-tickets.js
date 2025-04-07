@@ -222,6 +222,8 @@
         // Save all carts to localStorage
         function saveCartsToStorage() {
             localStorage.setItem('supafaya_carts', JSON.stringify(allCarts));
+            // Trigger cart:updated event
+            $(document).trigger('cart:updated');
         }
         
         // Load all carts from localStorage
@@ -414,13 +416,27 @@
             saveCartsToStorage();
         });
 
-        // Clear cart
-        $(document).on('click', '.clear-cart', function() {
-            cart.tickets = {};
-            cart.addons = {};
-            cart.total = 0;
-            updateOrderSummary();
-            saveCartsToStorage();
+        // Clear all items from cart
+        $('.clear-cart').on('click', function() {
+            if (confirm('Are you sure you want to clear all items from your cart?')) {
+                // Clear cart data for current event
+                if (allCarts[currentEventId]) {
+                    allCarts[currentEventId] = {
+                        tickets: {},
+                        addons: {},
+                        total: 0
+                    };
+                    
+                    // Save to localStorage
+                    saveCartsToStorage();
+                    
+                    // Update UI
+                    updateCartSummary();
+                    
+                    // Trigger cart:updated event
+                    $(document).trigger('cart:updated');
+                }
+            }
         });
 
         // Process checkout

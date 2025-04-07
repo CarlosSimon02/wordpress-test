@@ -17,6 +17,12 @@
     transition: all 0.3s ease;
 }
 
+.proof-of-payment-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 .proof-of-payment-button svg {
     margin-left: 8px;
 }
@@ -51,7 +57,7 @@
 .dialog-content {
     position: relative;
     width: 90%;
-    max-width: 600px;
+    max-width: 900px;
     max-height: 90vh;
     background-color: white;
     border-radius: 12px;
@@ -103,6 +109,98 @@
     padding: 24px;
     max-height: calc(90vh - 80px);
     overflow-y: auto;
+}
+
+/* Two Column Layout */
+.pop-two-column {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+}
+
+.form-column {
+    flex: 1 1 450px;
+}
+
+.cart-column {
+    flex: 1 1 250px;
+}
+
+.cart-summary {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 16px;
+    position: sticky;
+    top: 0;
+}
+
+.cart-summary h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-size: 18px;
+    color: #333;
+    border-bottom: 1px solid #eaeaea;
+    padding-bottom: 8px;
+}
+
+.cart-items-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+}
+
+.cart-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #eaeaea;
+}
+
+.cart-item:last-child {
+    border-bottom: none;
+}
+
+.item-details {
+    flex: 1;
+}
+
+.item-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+}
+
+.item-quantity {
+    font-size: 13px;
+    color: #666;
+    margin-top: 2px;
+}
+
+.item-price {
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+}
+
+.addon-item .item-name {
+    color: #5271ff;
+}
+
+.cart-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 12px;
+    border-top: 1px solid #ddd;
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.empty-cart {
+    text-align: center;
+    color: #888;
+    padding: 20px 0;
 }
 
 /* Form Styles */
@@ -264,6 +362,18 @@
     
     .dialog-body {
         padding: 16px;
+    }
+    
+    .pop-two-column {
+        flex-direction: column;
+    }
+    
+    .form-column {
+        order: 2;
+    }
+    
+    .cart-column {
+        order: 1;
     }
     
     .form-actions {

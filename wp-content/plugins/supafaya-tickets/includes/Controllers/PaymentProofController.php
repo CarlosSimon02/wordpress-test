@@ -166,6 +166,10 @@ class PaymentProofController {
             }
         }
         
+        // Log the extracted tickets and addons for debugging
+        error_log('AJAX Proof of Payment: Extracted tickets: ' . json_encode($tickets));
+        error_log('AJAX Proof of Payment: Extracted addons: ' . json_encode($addons));
+        
         // Prepare payment data
         $payment_data = [
             'event_id' => $event_id,
