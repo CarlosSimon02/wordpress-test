@@ -3,17 +3,20 @@ namespace SupafayaTickets;
 
 use SupafayaTickets\Controllers\EventController;
 use SupafayaTickets\Controllers\TicketController;
+use SupafayaTickets\Controllers\PaymentProofController;
 use SupafayaTickets\Auth\FirebaseAuth;
 
 class Plugin {
     private $event_controller;
     private $ticket_controller;
+    private $payment_proof_controller;
     private $firebase_auth;
     
     public function init() {
         // Initialize controllers
         $this->event_controller = new EventController();
         $this->ticket_controller = new TicketController();
+        $this->payment_proof_controller = new PaymentProofController();
         
         // Initialize Firebase Auth
         $this->firebase_auth = new FirebaseAuth();
@@ -47,6 +50,10 @@ class Plugin {
 
         add_action('wp_ajax_supafaya_get_user_items', array($this->event_controller, 'ajax_get_user_items'));
         add_action('wp_ajax_nopriv_supafaya_get_user_items', array($this->event_controller, 'ajax_get_user_items'));
+        
+        // Add Proof of Payment AJAX action
+        add_action('wp_ajax_supafaya_proof_of_payment', array($this->payment_proof_controller, 'ajax_submit_proof_of_payment'));
+        add_action('wp_ajax_nopriv_supafaya_proof_of_payment', array($this->payment_proof_controller, 'ajax_submit_proof_of_payment'));
     }
     
     public function register_assets() {
@@ -55,6 +62,14 @@ class Plugin {
             'supafaya-tickets-style',
             SUPAFAYA_PLUGIN_URL . 'assets/css/supafaya-tickets.css',
             [],
+            SUPAFAYA_VERSION
+        );
+        
+        // Register Proof of Payment CSS
+        wp_register_style(
+            'supafaya-proof-of-payment-style',
+            SUPAFAYA_PLUGIN_URL . 'assets/css/proof-of-payment.css',
+            ['supafaya-tickets-style'],
             SUPAFAYA_VERSION
         );
         
@@ -71,6 +86,15 @@ class Plugin {
         wp_register_script(
             'supafaya-purchased-items',
             SUPAFAYA_PLUGIN_URL . 'assets/js/purchased-items.js',
+            ['jquery', 'supafaya-tickets-script'],
+            SUPAFAYA_VERSION,
+            true
+        );
+        
+        // Register Proof of Payment script
+        wp_register_script(
+            'supafaya-proof-of-payment',
+            SUPAFAYA_PLUGIN_URL . 'assets/js/proof-of-payment.js',
             ['jquery', 'supafaya-tickets-script'],
             SUPAFAYA_VERSION,
             true
@@ -181,14 +205,31 @@ class Plugin {
                 true
             );
             
-            // Enqueue the purchased items script when on event page
+            // Enqueue scripts and styles for event pages
             if (isset($_GET['event_id'])) {
+                // Enqueue the purchased items script
                 wp_enqueue_script(
                     'supafaya-purchased-items',
                     SUPAFAYA_PLUGIN_URL . 'assets/js/purchased-items.js',
                     ['jquery', 'supafaya-tickets-script'],
                     SUPAFAYA_VERSION,
                     true
+                );
+                
+                // Enqueue the proof of payment script and styles
+                wp_enqueue_script(
+                    'supafaya-proof-of-payment',
+                    SUPAFAYA_PLUGIN_URL . 'assets/js/proof-of-payment.js',
+                    ['jquery', 'supafaya-tickets-script'],
+                    SUPAFAYA_VERSION,
+                    true
+                );
+                
+                wp_enqueue_style(
+                    'supafaya-proof-of-payment-style',
+                    SUPAFAYA_PLUGIN_URL . 'assets/css/proof-of-payment.css',
+                    ['supafaya-tickets-style'],
+                    SUPAFAYA_VERSION
                 );
             }
             

@@ -91,6 +91,29 @@ The plugin adds a user dropdown to your site's main menu:
 - `[supafaya_ticket_checkout]`: Displays a ticket checkout form
 - `[supafaya_my_tickets]`: Displays the user's purchased tickets
 
+## Proof of Payment Feature
+
+This plugin now supports a "Proof of Payment" feature, which allows users to submit manual payment proofs for their ticket purchases. 
+
+### How It Works
+
+1. Users add tickets to their cart as normal
+2. After reviewing their cart, they click the "Send Proof of Payment" button
+3. A modal dialog appears where users can:
+   - Enter payment details (reference/transaction ID, bank/payment provider, amount, date)
+   - Upload a receipt or screenshot as proof of payment
+   - Add additional notes
+4. Upon submission, the proof is sent to the Supafaya API
+5. Administrators can review and verify the payment proofs in the Supafaya dashboard
+
+### Implementation Details
+
+- The feature is automatically integrated into the event page
+- The form handles all errors gracefully
+- Visual feedback is provided during all states (loading, error, success)
+- Mobile-responsive design
+- File upload preview for images and documents
+
 ## Troubleshooting
 
 ### Firebase Login Not Working

@@ -52,11 +52,18 @@ class TicketService {
             }
         }
         
+        // Determine payment method
+        $payment_method = 'free'; // Default to free
+        if ($total_amount > 0) {
+            // Use specified payment method if provided, otherwise default to 'card'
+            $payment_method = isset($ticket_data['payment_method']) ? $ticket_data['payment_method'] : 'card';
+        }
+        
         // Format data according to PurchaseRequest interface
         $purchase_request = [
             'eventId' => $ticket_data['event_id'],
             'tickets' => [], // Will be populated below
-            'paymentMethod' => ($total_amount > 0) ? 'card' : 'free', // Use 'card' for paid, 'free' for free
+            'paymentMethod' => $payment_method,
             'customerDetails' => [
                 'name' => $user_data['name'] ?? '',
                 'email' => $user_data['email'] ?? '',
@@ -68,6 +75,11 @@ class TicketService {
                 'cancel' => $ticket_data['payment_redirect_urls']['cancel'] ?? site_url('/payment-cancelled')
             ]
         ];
+        
+        // Add payment details if it's a PROOF_OF_PAYMENT method
+        if ($payment_method === 'PROOF_OF_PAYMENT' && isset($ticket_data['payment_details'])) {
+            $purchase_request['paymentDetails'] = $ticket_data['payment_details'];
+        }
         
         // Format tickets according to TicketPurchaseItem interface
         if (!empty($ticket_data['tickets'])) {
