@@ -54,15 +54,18 @@ class EventController
    */
   public function events_shortcode($atts)
   {
+    // Get default organization ID from settings
+    $default_org_id = get_option('supafaya_organization_id', '');
+    
     $atts = shortcode_atts([
-      'organization_id' => '',
+      'organization_id' => $default_org_id,
       'limit' => 10,
       'filter' => 'upcoming',
       'template' => 'grid' // grid, list, calendar
     ], $atts);
 
     if (empty($atts['organization_id'])) {
-      return '<p>Error: Organization ID is required</p>';
+      return '<p>Error: Organization ID is not configured. Please set it in the Supafaya Tickets settings.</p>';
     }
 
     $response = $this->event_service->getEventsByOrganization($atts['organization_id'], [
@@ -135,7 +138,10 @@ class EventController
    */
   public function ajax_load_events()
   {
-    $organization_id = sanitize_text_field($_POST['organization_id'] ?? '');
+    // Get default organization ID from settings
+    $default_org_id = get_option('supafaya_organization_id', '');
+    
+    $organization_id = sanitize_text_field($_POST['organization_id'] ?? $default_org_id);
     $limit = intval($_POST['limit'] ?? 10);
     $filter = sanitize_text_field($_POST['filter'] ?? 'upcoming');
     $next_cursor = sanitize_text_field($_POST['next_cursor'] ?? '');
@@ -143,7 +149,7 @@ class EventController
     if (empty($organization_id)) {
       wp_send_json([
         'success' => false,
-        'message' => 'Organization ID is required'
+        'message' => 'Organization ID is not configured. Please set it in the Supafaya Tickets settings.'
       ]);
       return;
     }
@@ -186,12 +192,15 @@ class EventController
    */
   public function rest_get_events($request)
   {
-    $organization_id = $request->get_param('organization_id');
+    // Get default organization ID from settings
+    $default_org_id = get_option('supafaya_organization_id', '');
+    
+    $organization_id = $request->get_param('organization_id') ?? $default_org_id;
     $limit = $request->get_param('limit') ?? 10;
     $filter = $request->get_param('filter') ?? 'upcoming';
 
     if (empty($organization_id)) {
-      return new \WP_Error('missing_param', 'Organization ID is required', ['status' => 400]);
+      return new \WP_Error('missing_param', 'Organization ID is not configured. Please set it in the Supafaya Tickets settings.', ['status' => 400]);
     }
 
     $response = $this->event_service->getEventsByOrganization($organization_id, [
@@ -200,11 +209,7 @@ class EventController
       'include_private' => true
     ]);
 
-    if (!$response['success']) {
-      return new \WP_Error('api_error', $response['message'] ?? 'Unknown error', ['status' => $response['status'] ?? 500]);
-    }
-
-    return rest_ensure_response($response['data']);
+    return rest_ensure_response($response);
   }
 
   /**

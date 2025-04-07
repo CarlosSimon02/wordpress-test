@@ -32,7 +32,7 @@
                     <td>Display a list of events</td>
                     <td>
                         <ul>
-                            <li><code>organization_id</code> (required) - The ID of the organization</li>
+                            <li><code>organization_id</code> (optional) - The ID of the organization. If not provided, uses the default from settings</li>
                             <li><code>limit</code> - Number of events to display (default: 10)</li>
                             <li><code>filter</code> - Filter events (upcoming, ongoing, past)</li>
                             <li><code>template</code> - Display template (grid, list, calendar)</li>

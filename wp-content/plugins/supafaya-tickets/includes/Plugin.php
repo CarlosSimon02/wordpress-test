@@ -279,6 +279,7 @@ class Plugin {
         register_setting('supafaya_tickets_options', 'supafaya_firebase_api_key');
         register_setting('supafaya_tickets_options', 'supafaya_firebase_auth_domain');
         register_setting('supafaya_tickets_options', 'supafaya_firebase_project_id');
+        register_setting('supafaya_tickets_options', 'supafaya_firebase_storage_bucket');
         
         add_settings_section(
             'supafaya_tickets_main',
@@ -400,6 +401,18 @@ class Plugin {
             function() {
                 $value = get_option('supafaya_firebase_project_id', '');
                 echo '<input type="text" name="supafaya_firebase_project_id" value="' . esc_attr($value) . '" class="regular-text">';
+            },
+            'supafaya-tickets-settings',
+            'supafaya_tickets_firebase'
+        );
+        
+        add_settings_field(
+            'supafaya_firebase_storage_bucket',
+            'Firebase Storage Bucket',
+            function() {
+                $value = get_option('supafaya_firebase_storage_bucket', '');
+                echo '<input type="text" name="supafaya_firebase_storage_bucket" value="' . esc_attr($value) . '" class="regular-text">';
+                echo '<p class="description">Example: your-app.appspot.com (not the firebasestorage.app URL)</p>';
             },
             'supafaya-tickets-settings',
             'supafaya_tickets_firebase'

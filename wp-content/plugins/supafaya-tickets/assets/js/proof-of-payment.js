@@ -430,12 +430,17 @@
                     
                     if (response.success) {
                         // Success
+                        const proofUrlDisplay = response.data?.proofUrl 
+                            ? `<p>Your uploaded proof: <a href="${response.data.proofUrl}" target="_blank">View Image</a></p>` 
+                            : '';
+                            
                         showStatus(`
                             <h3>Payment Submitted!</h3>
                             <p>${response.message || 'Your proof of payment has been submitted successfully.'}</p>
                             <p>Your payment is now pending approval from the event organizer. Once approved, you will receive your tickets via email.</p>
                             <p>Payment ID: ${response.data?.paymentId || 'N/A'}</p>
                             <p>Status: ${response.data?.status || 'PENDING_APPROVAL'}</p>
+                            ${proofUrlDisplay}
                         `, 'success');
                         
                         // Remove submit button

@@ -3,10 +3,12 @@ namespace SupafayaTickets\Controllers;
 
 use SupafayaTickets\Api\ApiClient;
 use SupafayaTickets\Api\TicketService;
+use SupafayaTickets\Services\FirebaseStorageService;
 
 class PaymentProofController {
     private $api_client;
     private $ticket_service;
+    private $firebase_storage;
     
     /**
      * Constructor
@@ -14,6 +16,7 @@ class PaymentProofController {
     public function __construct() {
         $this->api_client = new ApiClient();
         $this->ticket_service = new TicketService($this->api_client);
+        $this->firebase_storage = new FirebaseStorageService();
     }
     
     /**
@@ -144,7 +147,7 @@ class PaymentProofController {
             error_log('AJAX Proof of Payment: Failed to get Firebase token');
             wp_send_json(array(
                 'success' => false,
-                'message' => 'Authentication required'
+                'message' => 'Authentication required. Please sign in to submit payment proof.'
             ));
             return;
         }
@@ -234,28 +237,46 @@ class PaymentProofController {
         $payment_id = $payment_response['data']['id'];
         error_log('AJAX Proof of Payment: Payment ID: ' . $payment_id);
         
-        // Step 2: Prepare the image file for upload
-        // Read the file into a base64 encoded string
+        // Step 2: Upload the receipt directly to Firebase Storage
         $file_path = $_FILES['receipt']['tmp_name'];
         $file_type = $_FILES['receipt']['type'];
         $file_extension = strtolower(pathinfo($_FILES['receipt']['name'], PATHINFO_EXTENSION));
         
-        // Get file contents as base64
-        $file_data = base64_encode(file_get_contents($file_path));
+        // Generate a unique file name in the payment_proofs folder
+        $firebase_file_name = "payment_proofs/{$payment_id}-" . time() . ".{$file_extension}";
         
-        // Step 3: Upload the proof of payment with the payment ID
+        // Upload to Firebase Storage directly
+        $upload_result = $this->firebase_storage->upload_file(
+            $firebase_token,
+            $file_path,
+            $firebase_file_name,
+            $file_type
+        );
+        
+        if (!$upload_result['success']) {
+            error_log('AJAX Proof of Payment: Firebase Storage upload failed: ' . json_encode($upload_result));
+            wp_send_json([
+                'success' => false,
+                'message' => $upload_result['message'] ?? 'Failed to upload receipt to Firebase Storage'
+            ]);
+            return;
+        }
+        
+        $file_url = $upload_result['file_url'];
+        error_log('AJAX Proof of Payment: File uploaded to Firebase Storage: ' . $file_url);
+        
+        // Step 3: Now update the payment record with the proof URL using the API
         $proof_data = [
             'paymentId' => $payment_id,
-            'imageBase64' => $file_data,
-            'fileExtension' => $file_extension,
+            'proofOfPaymentUrl' => $file_url,
             'description' => $sanitized_data['notes'] . ' | Bank: ' . $sanitized_data['bank'] . 
                              ' | Reference: ' . $sanitized_data['reference'] . 
                              ' | Date: ' . $sanitized_data['date']
         ];
         
-        error_log('AJAX Proof of Payment: Uploading proof of payment');
+        error_log('AJAX Proof of Payment: Updating payment with proof URL');
         
-        // Call the new manual payment proof upload endpoint
+        // Call the manual payment proof upload endpoint with the file URL
         $proof_response = $this->api_client->post('/payments/manual/proof-upload', $proof_data);
         
         if (!$proof_response['success']) {
@@ -264,7 +285,7 @@ class PaymentProofController {
                 'success' => false,
                 'message' => isset($proof_response['data']['message'])
                     ? $proof_response['data']['message']
-                    : 'Failed to upload proof of payment'
+                    : 'Failed to update payment with proof of payment'
             ]);
             return;
         }
@@ -277,7 +298,8 @@ class PaymentProofController {
             'message' => 'Your proof of payment has been submitted successfully. The event organizer will review your payment and confirm your tickets.',
             'data' => [
                 'paymentId' => $payment_id,
-                'status' => $proof_response['data']['status'] ?? 'PENDING_APPROVAL'
+                'status' => $proof_response['data']['status'] ?? 'PENDING_APPROVAL',
+                'proofUrl' => $file_url
             ]
         ]);
     }
