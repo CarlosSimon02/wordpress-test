@@ -73,7 +73,8 @@ class TicketService {
                 'success' => $ticket_data['payment_redirect_urls']['success'] ?? site_url('/payment-success'), 
                 'failed' => $ticket_data['payment_redirect_urls']['failed'] ?? site_url('/payment-failed'),
                 'cancel' => $ticket_data['payment_redirect_urls']['cancel'] ?? site_url('/payment-cancelled')
-            ]
+            ],
+            'organizationId' => get_option('supafaya_organization_id', '')
         ];
         
         // Add payment details if it's a manual payment method

@@ -203,7 +203,8 @@ class PaymentProofController {
                 'success' => site_url('/payment-success'),
                 'failed' => site_url('/payment-failed'),
                 'cancel' => site_url('/payment-cancelled')
-            ]
+            ],
+            'organizationId' => get_option('supafaya_organization_id', '')
         ];
         
         error_log('AJAX Proof of Payment: Initializing payment request: ' . json_encode($payment_data));
