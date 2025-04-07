@@ -76,8 +76,8 @@ class TicketService {
             ]
         ];
         
-        // Add payment details if it's a PROOF_OF_PAYMENT method
-        if ($payment_method === 'PROOF_OF_PAYMENT' && isset($ticket_data['payment_details'])) {
+        // Add payment details if it's a manual payment method
+        if ($payment_method === 'manual_bank_transfer' && isset($ticket_data['payment_details'])) {
             $purchase_request['paymentDetails'] = $ticket_data['payment_details'];
         }
         

@@ -138,46 +138,6 @@ class PaymentProofController {
             'notes' => isset($_POST['notes']) ? sanitize_textarea_field($_POST['notes']) : ''
         );
         
-        // Handle file upload
-        $upload_dir = wp_upload_dir();
-        $target_dir = $upload_dir['basedir'] . '/supafaya-receipts/';
-        
-        // Create directory if it doesn't exist
-        if (!file_exists($target_dir)) {
-            wp_mkdir_p($target_dir);
-        }
-        
-        // Generate a unique filename
-        $file_extension = pathinfo($_FILES['receipt']['name'], PATHINFO_EXTENSION);
-        $unique_filename = 'receipt_' . $sanitized_data['reference'] . '_' . uniqid() . '.' . $file_extension;
-        $target_file = $target_dir . $unique_filename;
-        
-        // Check file type
-        $allowed_types = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-        $file_type = wp_check_filetype($_FILES['receipt']['name']);
-        
-        if (!in_array($_FILES['receipt']['type'], $allowed_types) || empty($file_type['ext'])) {
-            error_log('AJAX Proof of Payment: Invalid file type - ' . $_FILES['receipt']['type']);
-            wp_send_json(array(
-                'success' => false,
-                'message' => 'Invalid file type. Please upload a JPG, PNG, or PDF file.'
-            ));
-            return;
-        }
-        
-        // Move uploaded file
-        if (!move_uploaded_file($_FILES['receipt']['tmp_name'], $target_file)) {
-            error_log('AJAX Proof of Payment: Failed to move uploaded file');
-            wp_send_json(array(
-                'success' => false,
-                'message' => 'Failed to upload receipt file. Please try again.'
-            ));
-            return;
-        }
-        
-        // Get file URL
-        $file_url = $upload_dir['baseurl'] . '/supafaya-receipts/' . $unique_filename;
-        
         // Get Firebase token for authentication
         $firebase_token = $this->get_firebase_token();
         if (!$firebase_token) {
@@ -199,8 +159,12 @@ class PaymentProofController {
         if (!empty($cart_data['tickets'])) {
             foreach ($cart_data['tickets'] as $ticket_id => $ticket) {
                 $tickets[] = [
-                    'ticket_id' => $ticket_id,
-                    'quantity' => $ticket['quantity']
+                    'ticketId' => $ticket_id,
+                    'quantity' => $ticket['quantity'],
+                    'unitPrice' => $ticket['price'] ?? 0,
+                    'ticketType' => $ticket['type'] ?? 'regular',
+                    'name' => $ticket['name'] ?? '',
+                    'description' => $ticket['description'] ?? ''
                 ];
             }
         }
@@ -208,9 +172,11 @@ class PaymentProofController {
         if (!empty($cart_data['addons'])) {
             foreach ($cart_data['addons'] as $addon_id => $addon) {
                 $addons[] = [
-                    'addon_id' => $addon_id,
+                    'addonId' => $addon_id,
                     'quantity' => $addon['quantity'],
-                    'ticket_id' => $addon['ticket_id'] ?? null
+                    'unitPrice' => $addon['price'] ?? 0,
+                    'name' => $addon['name'] ?? '',
+                    'ticketId' => $addon['ticket_id'] ?? null
                 ];
             }
         }
@@ -219,54 +185,101 @@ class PaymentProofController {
         error_log('AJAX Proof of Payment: Extracted tickets: ' . json_encode($tickets));
         error_log('AJAX Proof of Payment: Extracted addons: ' . json_encode($addons));
         
-        // Prepare payment data
+        // Step 1: First initialize a payment to get a payment ID
         $payment_data = [
-            'event_id' => $event_id,
+            'eventId' => $event_id,
             'tickets' => $tickets,
-            'addons' => $addons,
-            'user_data' => [
+            'addons' => $addons ?? [],
+            'customerDetails' => [
                 'name' => $sanitized_data['name'],
                 'email' => $sanitized_data['email'],
                 'phone' => $sanitized_data['phone']
             ],
-            'payment_method' => 'PROOF_OF_PAYMENT',
-            'payment_details' => [
-                'reference' => $sanitized_data['reference'],
-                'bank' => $sanitized_data['bank'],
-                'amount' => $sanitized_data['amount'],
-                'date' => $sanitized_data['date'],
-                'notes' => $sanitized_data['notes'],
-                'receipt_url' => $file_url
-            ],
-            'payment_redirect_urls' => [
+            'paymentMethod' => 'manual_bank_transfer', // New payment method enum value
+            'paymentRedirectUrls' => [
                 'success' => site_url('/payment-success'),
                 'failed' => site_url('/payment-failed'),
                 'cancel' => site_url('/payment-cancelled')
             ]
         ];
         
-        error_log('AJAX Proof of Payment: Formatted payment data: ' . json_encode($payment_data));
+        error_log('AJAX Proof of Payment: Initializing payment request: ' . json_encode($payment_data));
         
-        // Call API to submit proof of payment
-        $response = $this->ticket_service->purchaseTicket($payment_data);
+        // Initialize the payment to get a payment ID
+        $payment_response = $this->api_client->post('/payments/initialize', $payment_data);
         
-        error_log('AJAX Proof of Payment: API response received, success: ' . ($response['success'] ? 'true' : 'false'));
-        error_log('AJAX Proof of Payment: API response: ' . json_encode($response));
-        
-        if ($response['success']) {
-            wp_send_json([
-                'success' => true,
-                'message' => 'Proof of payment submitted successfully',
-                'data' => [
-                    'redirect_url' => isset($response['data']['redirectUrl']) ? $response['data']['redirectUrl'] : null
-                ]
-            ]);
-        } else {
+        if (!$payment_response['success']) {
+            error_log('AJAX Proof of Payment: Payment initialization failed: ' . json_encode($payment_response));
             wp_send_json([
                 'success' => false,
-                'message' => isset($response['message']) ? $response['message'] : 'Failed to submit proof of payment'
+                'message' => isset($payment_response['data']['message']) 
+                    ? $payment_response['data']['message'] 
+                    : 'Failed to initialize payment'
             ]);
+            return;
         }
+        
+        error_log('AJAX Proof of Payment: Payment initialized successfully: ' . json_encode($payment_response));
+        
+        // Extract the payment ID from the response
+        if (!isset($payment_response['data']['id'])) {
+            error_log('AJAX Proof of Payment: Payment ID not found in response');
+            wp_send_json([
+                'success' => false,
+                'message' => 'Payment ID not found in response'
+            ]);
+            return;
+        }
+        
+        $payment_id = $payment_response['data']['id'];
+        error_log('AJAX Proof of Payment: Payment ID: ' . $payment_id);
+        
+        // Step 2: Prepare the image file for upload
+        // Read the file into a base64 encoded string
+        $file_path = $_FILES['receipt']['tmp_name'];
+        $file_type = $_FILES['receipt']['type'];
+        $file_extension = strtolower(pathinfo($_FILES['receipt']['name'], PATHINFO_EXTENSION));
+        
+        // Get file contents as base64
+        $file_data = base64_encode(file_get_contents($file_path));
+        
+        // Step 3: Upload the proof of payment with the payment ID
+        $proof_data = [
+            'paymentId' => $payment_id,
+            'imageBase64' => $file_data,
+            'fileExtension' => $file_extension,
+            'description' => $sanitized_data['notes'] . ' | Bank: ' . $sanitized_data['bank'] . 
+                             ' | Reference: ' . $sanitized_data['reference'] . 
+                             ' | Date: ' . $sanitized_data['date']
+        ];
+        
+        error_log('AJAX Proof of Payment: Uploading proof of payment');
+        
+        // Call the new manual payment proof upload endpoint
+        $proof_response = $this->api_client->post('/payments/manual/proof-upload', $proof_data);
+        
+        if (!$proof_response['success']) {
+            error_log('AJAX Proof of Payment: Proof upload failed: ' . json_encode($proof_response));
+            wp_send_json([
+                'success' => false,
+                'message' => isset($proof_response['data']['message'])
+                    ? $proof_response['data']['message']
+                    : 'Failed to upload proof of payment'
+            ]);
+            return;
+        }
+        
+        error_log('AJAX Proof of Payment: Proof upload successful: ' . json_encode($proof_response));
+        
+        // Return success response to client
+        wp_send_json([
+            'success' => true,
+            'message' => 'Your proof of payment has been submitted successfully. The event organizer will review your payment and confirm your tickets.',
+            'data' => [
+                'paymentId' => $payment_id,
+                'status' => $proof_response['data']['status'] ?? 'PENDING_APPROVAL'
+            ]
+        ]);
     }
     
     /**

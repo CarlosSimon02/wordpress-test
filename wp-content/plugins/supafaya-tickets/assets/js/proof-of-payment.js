@@ -398,80 +398,27 @@
         
         // Submit proof of payment form
         function submitProofOfPayment(form) {
-            debug('Submitting proof of payment form');
-            
-            // Manual form validation to ensure all required fields have values
-            const formElement = $(form);
-            const requiredFields = ['name', 'email', 'phone', 'reference', 'bank', 'amount', 'date'];
-            let missingFields = [];
-            
-            // Check all required fields
-            requiredFields.forEach(fieldName => {
-                const field = formElement.find(`[name="${fieldName}"]`);
-                if (field.length === 0 || !field.val().trim()) {
-                    missingFields.push(fieldName);
-                    debug(`Missing required field: ${fieldName}`);
-                }
-            });
-            
-            // Check file upload
-            const fileInput = formElement.find('input[type="file"]')[0];
-            if (!fileInput || fileInput.files.length === 0) {
-                missingFields.push('receipt');
-                debug('Missing required file: receipt');
-            }
-            
-            // If there are missing fields, show error and return
-            if (missingFields.length > 0) {
-                showStatus(`Please fill in all required fields: ${missingFields.join(', ')}`, 'error');
-                return;
-            }
-            
-            // Get cart data
+            const formStatus = $(form).find('.form-status');
+            const submitButton = $(form).find('.submit-button');
             const cartData = getCurrentCartData();
-            if (!cartData || Object.keys(cartData.tickets).length === 0 && Object.keys(cartData.addons).length === 0) {
-                showStatus('Your cart is empty. Please add tickets or items to your cart before submitting payment proof.', 'error');
-                return;
-            }
+            const formData = new FormData(form);
             
-            // Show loading state
-            showStatus('Submitting your proof of payment...', 'loading');
-            
-            // Disable form
-            formElement.find('input, button, textarea').prop('disabled', true);
-            
-            // Create FormData object
-            const formData = new FormData();
-            
-            // Manually add each form field to ensure they're included
-            formElement.find('input, textarea').each(function() {
-                const field = $(this);
-                const fieldName = field.attr('name');
-                const fieldValue = field.val();
-                
-                if (fieldName && fieldName !== 'receipt') { // Skip file input, we'll handle it separately
-                    formData.append(fieldName, fieldValue);
-                    debug(`Adding field: ${fieldName} = ${fieldValue}`);
-                }
-            });
-            
-            // Handle file separately
-            if (fileInput && fileInput.files.length > 0) {
-                formData.append('receipt', fileInput.files[0]);
-                debug(`Adding file: receipt = ${fileInput.files[0].name}`);
-            }
-            
-            // Add other necessary data
+            // Add event ID and cart data to the form
             formData.append('event_id', currentEventId);
+            formData.append('cart_data', JSON.stringify(cartData));
             formData.append('action', 'supafaya_proof_of_payment');
             formData.append('nonce', supafayaTickets.nonce);
             
-            // Add cart data to the form data
-            formData.append('cart_data', JSON.stringify(cartData));
+            // Disable submit button and show loading message
+            submitButton.prop('disabled', true).text('Submitting...');
+            showStatus('Uploading proof of payment...', 'info');
             
-            debug('Form data prepared, submitting AJAX request');
+            debug('Submitting proof of payment form', {
+                formData: '(FormData object)',
+                eventId: currentEventId,
+                cartDataLength: JSON.stringify(cartData).length
+            });
             
-            // Submit the form
             $.ajax({
                 url: supafayaTickets.ajaxUrl,
                 type: 'POST',
@@ -479,41 +426,53 @@
                 processData: false,
                 contentType: false,
                 success: function(response) {
-                    // Re-enable form
-                    formElement.find('input, button, textarea').prop('disabled', false);
-                    
-                    debug('AJAX Response:', response);
+                    debug('Proof of payment response', response);
                     
                     if (response.success) {
-                        // Show success message
-                        showStatus('Proof of payment submitted successfully! We will verify your payment and update your order status.', 'success');
+                        // Success
+                        showStatus(`
+                            <h3>Payment Submitted!</h3>
+                            <p>${response.message || 'Your proof of payment has been submitted successfully.'}</p>
+                            <p>Your payment is now pending approval from the event organizer. Once approved, you will receive your tickets via email.</p>
+                            <p>Payment ID: ${response.data?.paymentId || 'N/A'}</p>
+                            <p>Status: ${response.data?.status || 'PENDING_APPROVAL'}</p>
+                        `, 'success');
                         
-                        // Clear the cart
-                        clearCart();
+                        // Remove submit button
+                        $(form).find('.form-actions').remove();
                         
-                        // Close dialog after a delay
+                        // Clear cart
                         setTimeout(function() {
-                            closeDialog();
-                            
-                            // Redirect to success page if provided
-                            if (response.data && response.data.redirect_url) {
+                            clearCart();
+                        }, 1000);
+                        
+                        // Redirect after a delay if there's a redirect URL
+                        if (response.data && response.data.redirect_url) {
+                            setTimeout(function() {
                                 window.location.href = response.data.redirect_url;
-                            }
-                        }, 3000);
+                            }, 3000);
+                        }
                     } else {
-                        // Show error message
-                        showStatus(response.message || 'An error occurred while submitting your proof of payment. Please try again.', 'error');
+                        // Error
+                        submitButton.prop('disabled', false).text('Submit Proof');
+                        showStatus(`
+                            <h3>Error</h3>
+                            <p>${response.message || 'Failed to submit proof of payment. Please try again.'}</p>
+                        `, 'error');
                     }
                 },
-                error: function(jqXHR, textStatus, errorThrown) {
-                    // Re-enable form
-                    formElement.find('input, button, textarea').prop('disabled', false);
+                error: function(xhr, status, error) {
+                    debug('Proof of payment error', { xhr, status, error });
                     
-                    // Log error details for debugging
-                    debug('AJAX Error', { status: textStatus, error: errorThrown, response: jqXHR.responseText });
+                    // Enable submit button again
+                    submitButton.prop('disabled', false).text('Submit Proof');
                     
-                    // Show error message
-                    showStatus('An error occurred while connecting to the server. Please try again later.', 'error');
+                    // Show error
+                    showStatus(`
+                        <h3>Server Error</h3>
+                        <p>An error occurred while submitting your payment proof. Please try again later.</p>
+                        <p>Error: ${error}</p>
+                    `, 'error');
                 }
             });
         }
