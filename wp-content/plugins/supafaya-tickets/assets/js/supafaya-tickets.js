@@ -239,38 +239,71 @@
         }
 
         // Handle ticket quantity changes
-        $(document).on('click', '.ticket-item .quantity-decrease', function() {
+        $(document).off('click', '.ticket-item .quantity-decrease').on('click', '.ticket-item .quantity-decrease', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
             const input = $(this).siblings('.ticket-quantity');
-            const currentVal = parseInt(input.val());
+            const currentVal = parseInt(input.val()) || 1;
             if (currentVal > 1) {
-                input.val(currentVal - 1);
+                input.val(currentVal - 1).trigger('change');
             }
         });
 
-        $(document).on('click', '.ticket-item .quantity-increase', function() {
+        $(document).off('click', '.ticket-item .quantity-increase').on('click', '.ticket-item .quantity-increase', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
             const input = $(this).siblings('.ticket-quantity');
-            const currentVal = parseInt(input.val());
-            const max = parseInt(input.attr('max') || 10);
-            if (currentVal < max) {
-                input.val(currentVal + 1);
+            const currentVal = parseInt(input.val()) || 1;
+            const max = parseInt(input.attr('max'));
+            const effectiveMax = max === -1 ? 1000 : (max || 10);
+            
+            if (currentVal < effectiveMax) {
+                input.val(currentVal + 1).trigger('change');
             }
         });
 
-        // Handle addon quantity changes
-        $(document).on('click', '.addon-item .quantity-decrease', function() {
+        // Handle addon quantity changes - using different selectors to avoid conflicts
+        $(document).off('click', '.addon-item .addon-quantity-decrease').on('click', '.addon-item .addon-quantity-decrease', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
             const input = $(this).siblings('.addon-quantity');
-            const currentVal = parseInt(input.val());
+            const currentVal = parseInt(input.val()) || 1;
             if (currentVal > 1) {
-                input.val(currentVal - 1);
+                input.val(currentVal - 1).trigger('change');
             }
         });
 
-        $(document).on('click', '.addon-item .quantity-increase', function() {
+        $(document).off('click', '.addon-item .addon-quantity-increase').on('click', '.addon-item .addon-quantity-increase', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
             const input = $(this).siblings('.addon-quantity');
-            const currentVal = parseInt(input.val());
-            const max = parseInt(input.attr('max') || 10);
-            if (currentVal < max) {
-                input.val(currentVal + 1);
+            const currentVal = parseInt(input.val()) || 1;
+            const max = parseInt(input.attr('max'));
+            const effectiveMax = max === -1 ? 1000 : (max || 10);
+            
+            if (currentVal < effectiveMax) {
+                input.val(currentVal + 1).trigger('change');
+            }
+        });
+
+        // Add direct input change handler
+        $(document).off('change', '.ticket-quantity, .addon-quantity').on('change', '.ticket-quantity, .addon-quantity', function() {
+            const input = $(this);
+            let currentVal = parseInt(input.val()) || 1;
+            const max = parseInt(input.attr('max'));
+            const effectiveMax = max === -1 ? 1000 : (max || 10);
+            
+            // Ensure value is within bounds
+            if (currentVal < 1) currentVal = 1;
+            if (currentVal > effectiveMax) currentVal = effectiveMax;
+            
+            // Update input value if it was adjusted
+            if (currentVal !== parseInt(input.val())) {
+                input.val(currentVal);
             }
         });
 
