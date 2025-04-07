@@ -25,7 +25,17 @@
         return new Promise((resolve, reject) => {
             // Try direct Firebase auth first
             if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
-                firebase.auth().currentUser.getIdToken(true).then(resolve).catch(reject);
+                // Force refresh the token by passing true
+                firebase.auth().currentUser.getIdToken(true)
+                    .then(token => {
+                        // Store the fresh token in cookie for server-side access
+                        document.cookie = 'firebase_user_token=' + token + '; path=/; max-age=3600; SameSite=Lax';
+                        resolve(token);
+                    })
+                    .catch(error => {
+                        console.error('Error getting Firebase token:', error);
+                        reject(error);
+                    });
                 return;
             }
             
@@ -58,11 +68,14 @@
                 // If there was another beforeSend, call it first
                 if (oldBeforeSend) oldBeforeSend(xhr);
                 
-                // Try to get and set the token from the cookie
-                const match = document.cookie.match(new RegExp('(^| )firebase_user_token=([^;]+)'));
-                if (match) {
-                    xhr.setRequestHeader('X-Firebase-Token', match[2]);
-                }
+                // Get a fresh token for each request
+                getFirebaseToken()
+                    .then(token => {
+                        xhr.setRequestHeader('X-Firebase-Token', token);
+                    })
+                    .catch(error => {
+                        console.error('Error setting Firebase token in request:', error);
+                    });
             };
         }
     });

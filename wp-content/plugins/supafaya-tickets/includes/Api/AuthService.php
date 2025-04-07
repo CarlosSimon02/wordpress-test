@@ -64,9 +64,24 @@ class AuthService {
             if (isset($token_data['refresh_token'])) {
                 $refresh_result = $this->refreshToken($token_data['refresh_token']);
                 if ($refresh_result) {
-                    return $refresh_result;
+                    // Update the token data with the refreshed token
+                    $token_data = array_merge($token_data, $refresh_result);
+                    return $token_data;
                 }
             }
+            
+            // If we can't refresh, check if we have a Firebase token in the request
+            $headers = function_exists('getallheaders') ? getallheaders() : [];
+            if (isset($headers['X-Firebase-Token'])) {
+                $firebase_token = $headers['X-Firebase-Token'];
+                // Use the Firebase token directly
+                return [
+                    'access_token' => $firebase_token,
+                    'expires_in' => 3600, // Firebase tokens expire in 1 hour
+                    'token_type' => 'Bearer'
+                ];
+            }
+            
             return false;
         }
         
