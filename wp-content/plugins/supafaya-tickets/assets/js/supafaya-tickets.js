@@ -221,9 +221,11 @@
         
         // Save all carts to localStorage
         function saveCartsToStorage() {
+            console.log('Saving carts to localStorage:', allCarts);
             localStorage.setItem('supafaya_carts', JSON.stringify(allCarts));
             // Trigger cart:updated event
             $(document).trigger('cart:updated');
+            console.log('Carts saved to localStorage');
         }
         
         // Load all carts from localStorage
@@ -311,29 +313,67 @@
 
         // Add ticket to cart
         $(document).on('click', '.add-to-cart:not(.add-addon-to-cart)', function() {
+            console.log('Add to cart button clicked');
+            
             const ticketItem = $(this).closest('.ticket-item');
             const ticketId = $(this).data('ticket-id');
             const ticketName = ticketItem.find('.ticket-name').text();
             const ticketPrice = parseFloat(ticketItem.find('.ticket-price').text().replace('₱', '').replace('$', '').replace(',', ''));
             const quantityToAdd = parseInt(ticketItem.find('.ticket-quantity').val() || 1);
+            
+            console.log('Ticket details:', { ticketId, ticketName, ticketPrice, quantityToAdd });
 
-            // Check if the ticket already exists in the cart
-            if (cart.tickets[ticketId]) {
-                // Add to the existing quantity
-                cart.tickets[ticketId].quantity += quantityToAdd;
-            } else {
-                // Create a new entry
-                cart.tickets[ticketId] = {
-                    id: ticketId,
-                    name: ticketName,
-                    price: ticketPrice,
-                    quantity: quantityToAdd
-                };
-            }
+            // Add to cart
+            addTicketToCart(ticketId, quantityToAdd, {
+                name: ticketName,
+                price: ticketPrice
+            });
 
             // Reset quantity input to 1
             ticketItem.find('.ticket-quantity').val(1);
 
+            // Show visual feedback
+            const $button = $(this);
+            
+            // Store original text in data attribute to ensure we can restore it correctly
+            if (!$button.data('original-text')) {
+                $button.data('original-text', $button.html());
+            }
+            
+            $button.html('<span>Added</span> <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>');
+            
+            setTimeout(() => {
+                // Use the stored original text
+                $button.html($button.data('original-text'));
+            }, 1000);
+            
+            // Show a temporary notification
+            const $notification = $('<div class="cart-notification">Added to cart</div>');
+            $('body').append($notification);
+            setTimeout(() => $notification.addClass('show'), 10);
+            setTimeout(() => {
+                $notification.removeClass('show');
+                setTimeout(() => $notification.remove(), 300);
+            }, 1500);
+        });
+        
+        // Add addon to cart
+        $(document).on('click', '.add-addon-to-cart', function() {
+            const addonItem = $(this).closest('.addon-item');
+            const addonId = $(this).data('addon-id');
+            const addonName = addonItem.find('.ticket-name').text();
+            const addonPrice = parseFloat(addonItem.find('.ticket-price').text().replace('₱', '').replace('$', '').replace(',', ''));
+            const quantityToAdd = parseInt(addonItem.find('.addon-quantity, .ticket-quantity').val() || 1);
+
+            // Add to cart
+            addAddonToCart(addonId, quantityToAdd, {
+                name: addonName,
+                price: addonPrice
+            });
+
+            // Reset quantity input to 1
+            addonItem.find('.addon-quantity, .ticket-quantity').val(1);
+            
             // Show visual feedback
             const $button = $(this);
             
@@ -357,87 +397,28 @@
                 $notification.removeClass('show');
                 setTimeout(() => $notification.remove(), 300);
             }, 1500);
-
-            updateOrderSummary();
-            saveCartsToStorage();
         });
-
-        // Add addon to cart
-        $(document).on('click', '.add-addon-to-cart', function() {
-            const addonItem = $(this).closest('.addon-item');
-            const addonId = $(this).data('addon-id');
-            const addonName = addonItem.find('.ticket-name').text();
-            const addonPrice = parseFloat(addonItem.find('.ticket-price').text().replace('₱', '').replace('$', '').replace(',', ''));
-            const quantityToAdd = parseInt(addonItem.find('.addon-quantity, .ticket-quantity').val() || 1);
-
-            // Check if the addon already exists in the cart
-            if (cart.addons[addonId]) {
-                // Add to the existing quantity
-                cart.addons[addonId].quantity += quantityToAdd;
+        
+        // Remove item from cart
+        function removeItemFromCart(itemId, isAddon) {
+            if (isAddon) {
+                delete cart.addons[itemId];
             } else {
-                // Create a new entry
-                cart.addons[addonId] = {
-                    id: addonId,
-                    name: addonName,
-                    price: addonPrice,
-                    quantity: quantityToAdd
-                };
-            }
-
-            // Reset quantity input to 1
-            addonItem.find('.addon-quantity, .ticket-quantity').val(1);
-
-            // Show visual feedback
-            const $button = $(this);
-            const originalText = $button.html();
-            
-            // Store original text in data attribute to ensure we can restore it correctly
-            if (!$button.data('original-text')) {
-                $button.data('original-text', originalText);
+                delete cart.tickets[itemId];
             }
             
-            $button.html('<span>Added</span> <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>');
+            // Calculate total
+            updateCartTotal();
             
-            setTimeout(() => {
-                // Use the stored original text
-                $button.html($button.data('original-text'));
-            }, 1000);
-
-            // Show a temporary notification
-            const $notification = $('<div class="cart-notification">Added to cart</div>');
-            $('body').append($notification);
-            setTimeout(() => $notification.addClass('show'), 10);
-            setTimeout(() => {
-                $notification.removeClass('show');
-                setTimeout(() => $notification.remove(), 300);
-            }, 1500);
-
+            // Update UI
             updateOrderSummary();
+            
+            // Save to localStorage
             saveCartsToStorage();
-        });
-
-        // Clear all items from cart
-        $('.clear-cart').on('click', function() {
-            if (confirm('Are you sure you want to clear all items from your cart?')) {
-                // Clear cart data for current event
-                if (allCarts[currentEventId]) {
-                    allCarts[currentEventId] = {
-                        tickets: {},
-                        addons: {},
-                        total: 0
-                    };
-                    
-                    // Save to localStorage
-                    saveCartsToStorage();
-                    
-                    // Update UI
-                    updateCartSummary();
-                    
-                    // Trigger cart:updated event
-                    $(document).trigger('cart:updated');
-                }
-            }
-        });
+            
+            // Notify that cart has been updated
+            $(document).trigger('cart:updated');
+        }
 
         // Process checkout
         $(document).on('click', '.checkout-button', function() {
@@ -688,18 +669,130 @@
             const id = item.data('id');
             const type = item.data('type');
             
-            if (type === 'ticket') {
-                delete cart.tickets[id];
-            } else if (type === 'addon') {
-                delete cart.addons[id];
-            }
+            removeItemFromCart(id, type === 'addon');
+        });
+        
+        // Clear all items from cart
+        $(document).on('click', '.clear-cart', function() {
+            console.log('Clear cart button clicked');
             
+            // Reset the cart
+            cart.tickets = {};
+            cart.addons = {};
+            cart.total = 0;
+            
+            // Update UI
             updateOrderSummary();
+            
+            // Save to localStorage 
             saveCartsToStorage();
+            
+            // Notify that cart has been updated
+            $(document).trigger('cart:updated');
+            
+            console.log('Cart cleared successfully');
         });
 
         // Initialize with empty cart
         updateOrderSummary();
+        
+        // Calculate cart total
+        function updateCartTotal() {
+            console.log('updateCartTotal called');
+            let total = 0;
+            
+            // Add ticket totals
+            for (const id in cart.tickets) {
+                const ticket = cart.tickets[id];
+                total += ticket.price * ticket.quantity;
+                console.log(`Ticket ${id}: ${ticket.price} * ${ticket.quantity} = ${ticket.price * ticket.quantity}`);
+            }
+            
+            // Add addon totals
+            for (const id in cart.addons) {
+                const addon = cart.addons[id];
+                total += addon.price * addon.quantity;
+                console.log(`Addon ${id}: ${addon.price} * ${addon.quantity} = ${addon.price * addon.quantity}`);
+            }
+            
+            // Update cart total
+            cart.total = total;
+            console.log('Cart total updated to:', total);
+            
+            // Update UI
+            $('.total-amount').text(`₱${total.toFixed(2)}`);
+        }
+        
+        // Helper function to add ticket to cart
+        function addTicketToCart(ticketId, quantity, ticketInfo) {
+            console.log('addTicketToCart called with:', { ticketId, quantity, ticketInfo });
+            
+            // Add or update ticket in cart - check if ticket already exists
+            if (cart.tickets[ticketId]) {
+                // Add to existing quantity
+                cart.tickets[ticketId].quantity += quantity;
+                console.log('Added to existing ticket quantity, new quantity:', cart.tickets[ticketId].quantity);
+            } else {
+                // Create new entry
+                cart.tickets[ticketId] = {
+                    id: ticketId,
+                    quantity: quantity,
+                    price: ticketInfo.price,
+                    name: ticketInfo.name
+                };
+            }
+            
+            console.log('Cart after adding ticket:', cart);
+            
+            // Calculate total
+            updateCartTotal();
+            
+            // Update UI
+            updateOrderSummary();
+            
+            // Save to localStorage
+            saveCartsToStorage();
+            
+            // Notify that cart has been updated
+            $(document).trigger('cart:updated');
+            
+            console.log('Cart updated successfully');
+        }
+        
+        // Helper function to add addon to cart
+        function addAddonToCart(addonId, quantity, addonInfo, ticketId) {
+            console.log('addAddonToCart called with:', { addonId, quantity, addonInfo, ticketId });
+            
+            // Add or update addon in cart - check if addon already exists
+            if (cart.addons[addonId]) {
+                // Add to existing quantity
+                cart.addons[addonId].quantity += quantity;
+                console.log('Added to existing addon quantity, new quantity:', cart.addons[addonId].quantity);
+            } else {
+                // Create new entry
+                cart.addons[addonId] = {
+                    id: addonId,
+                    quantity: quantity,
+                    price: addonInfo.price,
+                    name: addonInfo.name,
+                    ticket_id: ticketId
+                };
+            }
+            
+            console.log('Cart after adding addon:', cart);
+            
+            // Calculate total
+            updateCartTotal();
+            
+            // Update UI
+            updateOrderSummary();
+            
+            // Save to localStorage
+            saveCartsToStorage();
+            
+            // Notify that cart has been updated
+            $(document).trigger('cart:updated');
+        }
     }
     
     // Admin settings page

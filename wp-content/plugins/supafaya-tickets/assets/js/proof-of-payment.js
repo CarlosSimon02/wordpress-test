@@ -14,6 +14,13 @@
             return;
         }
         
+        // Enable debug mode
+        if (urlParams.has('debug') || localStorage.getItem('supafaya_debug') === 'true') {
+            window.supafayaDebug = true;
+            localStorage.setItem('supafaya_debug', 'true');
+            console.log('Supafaya Debug Mode Enabled');
+        }
+        
         // Debug mode
         const debug = function(message, data) {
             if (window.supafayaDebug) {
@@ -197,8 +204,31 @@
             
             // Listen for cart updates to toggle proof of payment button state
             $(document).on('cart:updated', function() {
+                debug('cart:updated event received');
                 updateProofOfPaymentButton();
             });
+            
+            // Additional cart modification listeners
+            $(document).on('click', '.add-to-cart, .add-addon-to-cart', function() {
+                debug('Add to cart button clicked, updating button state in 500ms');
+                setTimeout(updateProofOfPaymentButton, 1000);
+            });
+            
+            $(document).on('change', '.ticket-quantity, .addon-quantity', function() {
+                debug('Quantity changed, updating button state in 500ms');
+                setTimeout(updateProofOfPaymentButton, 500);
+            });
+            
+            // Monitor localStorage changes
+            window.addEventListener('storage', function(e) {
+                if (e.key === 'supafaya_carts') {
+                    debug('localStorage cart data changed, updating button state');
+                    updateProofOfPaymentButton();
+                }
+            });
+            
+            // Poll for cart changes periodically
+            setInterval(updateProofOfPaymentButton, 2000);
         }
         
         // Update Proof of Payment button state based on cart contents
@@ -206,12 +236,35 @@
             const cartData = getCurrentCartData();
             const popButton = $('.proof-of-payment-button');
             
-            if (cartData && (
-                (cartData.tickets && Object.keys(cartData.tickets).length > 0) || 
-                (cartData.addons && Object.keys(cartData.addons).length > 0)
-            )) {
+            debug('Updating proof of payment button state', cartData);
+            
+            if (!popButton.length) {
+                debug('Proof of payment button not found in DOM');
+                return;
+            }
+            
+            let hasItems = false;
+            
+            if (cartData) {
+                // Check tickets
+                if (cartData.tickets && Object.keys(cartData.tickets).length > 0) {
+                    hasItems = true;
+                    debug('Cart has tickets:', Object.keys(cartData.tickets).length);
+                }
+                
+                // Check addons
+                if (cartData.addons && Object.keys(cartData.addons).length > 0) {
+                    hasItems = true;
+                    debug('Cart has addons:', Object.keys(cartData.addons).length);
+                }
+            }
+            
+            // Update button state
+            if (hasItems) {
+                debug('Enabling proof of payment button');
                 popButton.prop('disabled', false);
             } else {
+                debug('Disabling proof of payment button');
                 popButton.prop('disabled', true);
             }
         }
@@ -347,9 +400,30 @@
         function submitProofOfPayment(form) {
             debug('Submitting proof of payment form');
             
-            // Validate form
-            if (!form.checkValidity()) {
-                form.reportValidity();
+            // Manual form validation to ensure all required fields have values
+            const formElement = $(form);
+            const requiredFields = ['name', 'email', 'phone', 'reference', 'bank', 'amount', 'date'];
+            let missingFields = [];
+            
+            // Check all required fields
+            requiredFields.forEach(fieldName => {
+                const field = formElement.find(`[name="${fieldName}"]`);
+                if (field.length === 0 || !field.val().trim()) {
+                    missingFields.push(fieldName);
+                    debug(`Missing required field: ${fieldName}`);
+                }
+            });
+            
+            // Check file upload
+            const fileInput = formElement.find('input[type="file"]')[0];
+            if (!fileInput || fileInput.files.length === 0) {
+                missingFields.push('receipt');
+                debug('Missing required file: receipt');
+            }
+            
+            // If there are missing fields, show error and return
+            if (missingFields.length > 0) {
+                showStatus(`Please fill in all required fields: ${missingFields.join(', ')}`, 'error');
                 return;
             }
             
@@ -364,17 +438,38 @@
             showStatus('Submitting your proof of payment...', 'loading');
             
             // Disable form
-            const formElement = $(form);
             formElement.find('input, button, textarea').prop('disabled', true);
             
             // Create FormData object
-            const formData = new FormData(form);
+            const formData = new FormData();
+            
+            // Manually add each form field to ensure they're included
+            formElement.find('input, textarea').each(function() {
+                const field = $(this);
+                const fieldName = field.attr('name');
+                const fieldValue = field.val();
+                
+                if (fieldName && fieldName !== 'receipt') { // Skip file input, we'll handle it separately
+                    formData.append(fieldName, fieldValue);
+                    debug(`Adding field: ${fieldName} = ${fieldValue}`);
+                }
+            });
+            
+            // Handle file separately
+            if (fileInput && fileInput.files.length > 0) {
+                formData.append('receipt', fileInput.files[0]);
+                debug(`Adding file: receipt = ${fileInput.files[0].name}`);
+            }
+            
+            // Add other necessary data
             formData.append('event_id', currentEventId);
             formData.append('action', 'supafaya_proof_of_payment');
             formData.append('nonce', supafayaTickets.nonce);
             
             // Add cart data to the form data
             formData.append('cart_data', JSON.stringify(cartData));
+            
+            debug('Form data prepared, submitting AJAX request');
             
             // Submit the form
             $.ajax({
@@ -386,6 +481,8 @@
                 success: function(response) {
                     // Re-enable form
                     formElement.find('input, button, textarea').prop('disabled', false);
+                    
+                    debug('AJAX Response:', response);
                     
                     if (response.success) {
                         // Show success message
@@ -408,9 +505,12 @@
                         showStatus(response.message || 'An error occurred while submitting your proof of payment. Please try again.', 'error');
                     }
                 },
-                error: function() {
+                error: function(jqXHR, textStatus, errorThrown) {
                     // Re-enable form
                     formElement.find('input, button, textarea').prop('disabled', false);
+                    
+                    // Log error details for debugging
+                    debug('AJAX Error', { status: textStatus, error: errorThrown, response: jqXHR.responseText });
                     
                     // Show error message
                     showStatus('An error occurred while connecting to the server. Please try again later.', 'error');
@@ -422,10 +522,33 @@
         function getCurrentCartData() {
             // Check if we have a cart in localStorage
             try {
-                const allCarts = JSON.parse(localStorage.getItem('supafaya_carts') || '{}');
-                return allCarts[currentEventId] || null;
+                debug('Getting cart data from localStorage');
+                
+                // Check if event ID is valid
+                if (!currentEventId) {
+                    debug('Error: Invalid event ID', currentEventId);
+                    return null;
+                }
+                
+                // Get all carts from localStorage
+                const allCartsStr = localStorage.getItem('supafaya_carts');
+                if (!allCartsStr) {
+                    debug('No carts found in localStorage');
+                    return null;
+                }
+                
+                // Parse carts
+                const allCarts = JSON.parse(allCartsStr);
+                debug('All carts from localStorage', allCarts);
+                
+                // Get current event's cart
+                const currentCart = allCarts[currentEventId];
+                debug('Current event cart', currentCart);
+                
+                return currentCart || null;
             } catch (e) {
                 debug('Error getting cart data', e);
+                console.error('Error getting cart data', e);
                 return null;
             }
         }
