@@ -29,6 +29,7 @@ class TicketController
     add_action('wp_ajax_supafaya_purchase_ticket', [$this, 'ajax_purchase_ticket']);
     add_action('wp_ajax_nopriv_supafaya_purchase_ticket', [$this, 'ajax_purchase_ticket']);
     add_action('wp_ajax_supafaya_load_payment_history', [$this, 'ajax_load_payment_history']);
+    add_action('wp_ajax_nopriv_supafaya_load_payment_history', [$this, 'ajax_load_payment_history']);
   }
 
   /**
@@ -123,41 +124,20 @@ class TicketController
   }
 
   /**
-   * Shortcode for displaying payment history
+   * Shortcode handler for displaying payment history
    */
   public function payment_history_shortcode($atts)
   {
-    // Get default organization ID from settings
-    $default_org_id = get_option('supafaya_organization_id', '');
-    
-    $atts = shortcode_atts([
-      'organization_id' => $default_org_id,
+    // Parse attributes
+    $atts = shortcode_atts(array(
+      'organization_id' => '',
       'limit' => 10,
-      'page' => 1,
-    ], $atts);
+      'page' => 1
+    ), $atts, 'supafaya_payment_history');
     
-    // Debug logging
-    error_log('Payment History Shortcode called with args: ' . json_encode($atts));
-
-    // Check if Firebase user is logged in via cookie
-    $firebase_logged_in = isset($_COOKIE['firebase_user_token']);
-    if (!$firebase_logged_in) {
-      // Redirect to login page
-      $login_url = get_option('supafaya_login_page_url', home_url());
-      error_log('Payment History: User not logged in, redirecting to ' . $login_url);
-      return '<p>Please <a href="' . esc_url($login_url) . '">login</a> to view your payment history</p>';
-    }
-
-    // Get the firebase token from the cookie
-    $firebase_token = $this->get_firebase_token();
-    if (!$firebase_token) {
-      error_log('Payment History: Failed to get Firebase token');
-      return '<p>Authentication error. Please try logging in again.</p>';
-    }
+    // Debug
+    error_log('Payment History: Shortcode attributes: ' . json_encode($atts));
     
-    // Use the Firebase token for API requests
-    $this->api_client->setToken($firebase_token);
-
     // Also try to get the Firebase user info from cookie if available
     $user_info = '';
     if (isset($_COOKIE['firebase_user'])) {
@@ -200,10 +180,11 @@ class TicketController
     
     // Verify nonce
     if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'supafaya-tickets-nonce')) {
-      error_log('AJAX Payment History: Nonce verification failed');
+      error_log('AJAX Payment History: Nonce verification failed. Provided nonce: ' . $_POST['nonce']);
       wp_send_json(array(
         'success' => false,
-        'message' => 'Security verification failed'
+        'message' => 'Security verification failed',
+        'debug_info' => 'Please check that the nonce is correct'
       ));
       return;
     }
@@ -217,11 +198,15 @@ class TicketController
     
     // Get Firebase token
     $firebase_token = $this->get_firebase_token();
+    
+    error_log('AJAX Payment History: Firebase token check - ' . ($firebase_token ? 'Found token' : 'No token found'));
+    
     if (!$firebase_token) {
       error_log('AJAX Payment History: Failed to get Firebase token');
       wp_send_json(array(
         'success' => false,
-        'message' => 'Authentication required'
+        'message' => 'Authentication required. Please log in to view your payment history.',
+        'error_code' => 'auth_required'
       ));
       return;
     }
@@ -272,7 +257,7 @@ class TicketController
       $response = $this->api_client->get('/payments/user/' . $user_id . '/history', $query_params);
       
       error_log('AJAX Payment History: API response received, success: ' . ($response['success'] ? 'true' : 'false'));
-      error_log('AJAX Payment History: Full API response structure: ' . json_encode($response));
+      error_log('AJAX Payment History: Full API response: ' . json_encode($response));
       
       if ($response['success']) {
         // Log summary of results - Fix the nested data structure access
@@ -287,14 +272,17 @@ class TicketController
         error_log('AJAX Payment History: API error: ' . ($response['message'] ?? 'Unknown error'));
         wp_send_json(array(
           'success' => false,
-          'message' => $response['message'] ?? 'Failed to load payment history'
+          'message' => $response['message'] ?? 'Failed to load payment history',
+          'error_code' => 'api_error',
+          'details' => $response['error'] ?? null
         ));
       }
     } catch (\Exception $e) {
       error_log('AJAX Payment History: Exception: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
       wp_send_json(array(
         'success' => false,
-        'message' => 'Authentication error: ' . $e->getMessage()
+        'message' => 'Authentication error: ' . $e->getMessage(),
+        'error_code' => 'auth_error'
       ));
     }
   }

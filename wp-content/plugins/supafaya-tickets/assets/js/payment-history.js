@@ -3,13 +3,16 @@
   
   // Helper function for debug logging
   function debug(message, data) {
-      if (supafayaPaymentHistory.debug) {
-          if (data !== undefined) {
-              console.log('Payment History Debug:', message, data);
-          } else {
-              console.log('Payment History Debug:', message);
-          }
-      }
+      console.log('Payment History Debug:', message, data !== undefined ? data : '');
+      
+      // Only log to console when debug mode is enabled
+      // if (supafayaPaymentHistory && supafayaPaymentHistory.debug) {
+      //     if (data !== undefined) {
+      //         console.log('Payment History Debug:', message, data);
+      //     } else {
+      //         console.log('Payment History Debug:', message);
+      //     }
+      // }
   }
   
   // Main payment history functionality
@@ -81,10 +84,20 @@
           
           debug('Request payload', requestData);
           
+          // Get Firebase token from cookie
+          let firebaseToken = getCookie('firebase_user_token');
+          debug('Firebase token available:', !!firebaseToken);
+          
           $.ajax({
               url: supafayaPaymentHistory.ajaxUrl,
               type: 'POST',
               data: requestData,
+              beforeSend: function(xhr) {
+                  // Add Firebase token as a header if available
+                  if (firebaseToken) {
+                      xhr.setRequestHeader('X-Firebase-Token', firebaseToken);
+                  }
+              },
               success: function(response) {
                   isLoading = false;
                   debug('Response received', response);
@@ -158,6 +171,14 @@
           });
       }
       
+      // Helper function to get cookie value by name
+      function getCookie(name) {
+          const value = `; ${document.cookie}`;
+          const parts = value.split(`; ${name}=`);
+          if (parts.length === 2) return parts.pop().split(';').shift();
+          return null;
+      }
+      
       // Render payment items
       function renderPayments(payments) {
           debug('Rendering ' + payments.length + ' payment items');
@@ -191,7 +212,7 @@
                           </div>
                       </div>
                       <div class="payment-meta">
-                          <div class="payment-amount">${formattedAmount}</div>
+                          <div class="payment-amount">${`฿ ${payment.amount.toFixed(2)}`}</div>
                           <div class="payment-status status-${status.class}">${status.text}</div>
                           <button class="view-details-button" data-id="${payment.id}">
                               View Details
