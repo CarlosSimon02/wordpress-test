@@ -203,6 +203,60 @@
     padding: 20px 0;
 }
 
+/* Payment Instructions Section */
+.payment-instructions {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #eaeaea;
+}
+
+.payment-instructions h4 {
+    font-size: 16px;
+    margin: 0 0 12px 0;
+    color: #333;
+}
+
+.payment-instructions p {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+.payment-methods {
+    background-color: #f5f9ff;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 12px 0;
+    font-size: 16px;
+}
+
+.payment-method {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #e6eeff;
+}
+
+.payment-method:last-child {
+    border-bottom: none;
+}
+
+.payment-method strong {
+    color: #5271ff;
+    font-weight: 600;
+}
+
+.payment-note {
+    font-size: 13px;
+    color: #666;
+    font-style: italic;
+    background-color: #f9f9f9;
+    padding: 10px;
+    border-radius: 6px;
+    border-left: 3px solid #5271ff;
+}
+
 /* Form Styles */
 #proof-of-payment-form {
     display: flex;

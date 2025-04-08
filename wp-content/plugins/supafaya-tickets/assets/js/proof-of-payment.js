@@ -71,8 +71,6 @@
                             <div class="pop-two-column">
                                 <div class="form-column">
                                     <form id="proof-of-payment-form">
-                                        <div class="form-status"></div>
-                                        
                                         <div class="form-field">
                                             <label for="pop-name">Full Name *</label>
                                             <input type="text" id="pop-name" name="name" required>
@@ -118,6 +116,8 @@
                                             <label for="pop-notes">Additional Notes</label>
                                             <textarea id="pop-notes" name="notes"></textarea>
                                         </div>
+
+                                        <div class="form-status"></div>
                                         
                                         <div class="form-actions">
                                             <button type="button" class="cancel-button">Cancel</button>
@@ -134,6 +134,29 @@
                                         <div class="cart-total">
                                             <span>Total:</span>
                                             <span class="pop-total-amount">฿0.00</span>
+                                        </div>
+                                        <div class="payment-instructions">
+                                            <h4>Payment Instructions</h4>
+                                            <p>If you wish to transact through your e-payment gateways, please send the total order value to the following accounts:</p>
+                                            <div class="payment-methods">
+                                                <div class="payment-method">
+                                                    <strong>2C2P:</strong>
+                                                    <span>####-####-####</span>
+                                                </div>
+                                                <div class="payment-method">
+                                                    <strong>OpnPayments:</strong>
+                                                    <span>####-####-####</span>
+                                                </div>
+                                                <div class="payment-method">
+                                                    <strong>TrueMoney:</strong>
+                                                    <span>####-####-####</span>
+                                                </div>
+                                                <div class="payment-method">
+                                                    <strong>Rabbit LINE:</strong>
+                                                    <span>####-####-####</span>
+                                                </div>
+                                            </div>
+                                            <p class="payment-note">Please take a screenshot of the transaction in order for our team to verify the payment. We'll approve within 24 hours.</p>
                                         </div>
                                     </div>
                                 </div>
