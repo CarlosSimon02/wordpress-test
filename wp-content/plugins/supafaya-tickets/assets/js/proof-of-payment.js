@@ -442,67 +442,94 @@
                 cartDataLength: JSON.stringify(cartData).length
             });
             
-            $.ajax({
-                url: supafayaTickets.ajaxUrl,
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    debug('Proof of payment response', response);
-                    
-                    if (response.success) {
-                        // Success
-                        const proofUrlDisplay = response.data?.proofUrl 
-                            ? `<p>Your uploaded proof: <a href="${response.data.proofUrl}" target="_blank">View Image</a></p>` 
-                            : '';
+            // Get fresh token if possible
+            if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
+                firebase.auth().currentUser.getIdToken(true)
+                    .then(function(token) {
+                        debug('Got fresh Firebase token');
+                        sendFormData(token);
+                    })
+                    .catch(function(error) {
+                        debug('Error getting Firebase token, proceeding without token', error);
+                        sendFormData();
+                    });
+            } else {
+                debug('Firebase not available, proceeding without token');
+                sendFormData();
+            }
+            
+            function sendFormData(token) {
+                const ajaxConfig = {
+                    url: supafayaTickets.ajaxUrl,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        debug('Proof of payment response', response);
+                        
+                        if (response.success) {
+                            // Success
+                            const proofUrlDisplay = response.data?.proofUrl 
+                                ? `<p>Your uploaded proof: <a href="${response.data.proofUrl}" target="_blank">View Image</a></p>` 
+                                : '';
+                                
+                            showStatus(`
+                                <h3>Payment Submitted!</h3>
+                                <p>${response.message || 'Your proof of payment has been submitted successfully.'}</p>
+                                <p>Your payment is now pending approval from the event organizer. Once approved, you will receive your tickets via email.</p>
+                                <p>Payment ID: ${response.data?.paymentId || 'N/A'}</p>
+                                <p>Status: ${response.data?.status || 'PENDING_APPROVAL'}</p>
+                                ${proofUrlDisplay}
+                            `, 'success');
                             
-                        showStatus(`
-                            <h3>Payment Submitted!</h3>
-                            <p>${response.message || 'Your proof of payment has been submitted successfully.'}</p>
-                            <p>Your payment is now pending approval from the event organizer. Once approved, you will receive your tickets via email.</p>
-                            <p>Payment ID: ${response.data?.paymentId || 'N/A'}</p>
-                            <p>Status: ${response.data?.status || 'PENDING_APPROVAL'}</p>
-                            ${proofUrlDisplay}
-                        `, 'success');
-                        
-                        // Remove submit button
-                        $(form).find('.form-actions').remove();
-                        
-                        // Clear cart
-                        setTimeout(function() {
-                            clearCart();
-                        }, 1000);
-                        
-                        // Redirect after a delay if there's a redirect URL
-                        if (response.data && response.data.redirect_url) {
+                            // Remove submit button
+                            $(form).find('.form-actions').remove();
+                            
+                            // Clear cart
                             setTimeout(function() {
-                                window.location.href = response.data.redirect_url;
-                            }, 3000);
+                                clearCart();
+                            }, 1000);
+                            
+                            // Redirect after a delay if there's a redirect URL
+                            if (response.data && response.data.redirect_url) {
+                                setTimeout(function() {
+                                    window.location.href = response.data.redirect_url;
+                                }, 3000);
+                            }
+                        } else {
+                            // Error
+                            submitButton.prop('disabled', false).text('Submit Proof');
+                            showStatus(`
+                                <h3>Error</h3>
+                                <p>${response.message || 'Failed to submit proof of payment. Please try again.'}</p>
+                            `, 'error');
                         }
-                    } else {
-                        // Error
+                    },
+                    error: function(xhr, status, error) {
+                        debug('Proof of payment error', { xhr, status, error });
+                        
+                        // Enable submit button again
                         submitButton.prop('disabled', false).text('Submit Proof');
+                        
+                        // Show error
                         showStatus(`
-                            <h3>Error</h3>
-                            <p>${response.message || 'Failed to submit proof of payment. Please try again.'}</p>
+                            <h3>Server Error</h3>
+                            <p>An error occurred while submitting your payment proof. Please try again later.</p>
+                            <p>Error: ${error}</p>
                         `, 'error');
                     }
-                },
-                error: function(xhr, status, error) {
-                    debug('Proof of payment error', { xhr, status, error });
-                    
-                    // Enable submit button again
-                    submitButton.prop('disabled', false).text('Submit Proof');
-                    
-                    // Show error
-                    showStatus(`
-                        <h3>Server Error</h3>
-                        <p>An error occurred while submitting your payment proof. Please try again later.</p>
-                        <p>Error: ${error}</p>
-                    `, 'error');
+                };
+                
+                // Add token to headers if available
+                if (token) {
+                    ajaxConfig.beforeSend = function(xhr) {
+                        xhr.setRequestHeader('X-Firebase-Token', token);
+                    };
                 }
-            });
+                
+                $.ajax(ajaxConfig);
+            }
         }
         
         // Get current cart data

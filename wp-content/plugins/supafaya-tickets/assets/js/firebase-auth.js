@@ -168,12 +168,22 @@
     // Setup AJAX interceptor to include Firebase token in all requests
     function setupAjaxTokenInterceptor(user) {
         $.ajaxSetup({
-            beforeSend: function(xhr) {
-                user.getIdToken(true).then(function(token) {
-                    xhr.setRequestHeader('X-Firebase-Token', token);
-                }).catch(function(error) {
-                    console.error('Error getting Firebase token', error);
-                });
+            beforeSend: function(xhr, settings) {
+                // Only intercept our own AJAX calls to avoid issues with other plugins
+                if (settings.url && (
+                    settings.url.includes('/wp-admin/admin-ajax.php') ||
+                    settings.url.includes('supafaya')
+                )) {
+                    // Make sure we have a promise-based token acquisition
+                    // that won't block the AJAX request
+                    user.getIdToken(true)
+                        .then(function(token) {
+                            xhr.setRequestHeader('X-Firebase-Token', token);
+                        })
+                        .catch(function(error) {
+                            console.error('Error getting fresh Firebase token', error);
+                        });
+                }
             }
         });
     }

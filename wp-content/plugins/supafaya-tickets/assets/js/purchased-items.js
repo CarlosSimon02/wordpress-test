@@ -111,15 +111,15 @@
             this.elements.emptyState.hide();
             this.elements.contentState.hide();
             
-            // Get Firebase token and fetch items
-            this.getFirebaseToken()
-                .then(this.fetchPurchasedItems.bind(this))
-                .catch(this.handleTokenError.bind(this));
-        },
-        
-        // Get Firebase token
-        getFirebaseToken: function() {
-            return firebase.auth().currentUser.getIdToken(true);
+            // Get fresh token and fetch items
+            currentUser.getIdToken(true)
+                .then((token) => {
+                    this.fetchPurchasedItems(token);
+                })
+                .catch((error) => {
+                    console.error('Error getting Firebase token:', error);
+                    this.handleTokenError(error);
+                });
         },
         
         // Fetch purchased items from API

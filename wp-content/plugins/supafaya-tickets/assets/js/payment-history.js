@@ -84,91 +84,119 @@
           
           debug('Request payload', requestData);
           
-          // Get Firebase token from cookie
-          let firebaseToken = getCookie('firebase_user_token');
-          debug('Firebase token available:', !!firebaseToken);
-          
-          $.ajax({
-              url: supafayaPaymentHistory.ajaxUrl,
-              type: 'POST',
-              data: requestData,
-              beforeSend: function(xhr) {
-                  // Add Firebase token as a header if available
-                  if (firebaseToken) {
-                      xhr.setRequestHeader('X-Firebase-Token', firebaseToken);
-                  }
-              },
-              success: function(response) {
-                  isLoading = false;
-                  debug('Response received', response);
-                  
-                  // Log full response structure
-                  debug('Full response structure', JSON.stringify(response));
-                  
-                  if (response.success) {
-                      // Update pagination state
-                      currentPage = page;
-                      
-                      // Get data from response - Handle nested structure correctly
-                      const responseData = response.data || {};
-                      // The API response has data nested inside data
-                      const data = responseData.data || {};
-                      debug('Response data structure', data);
-                      
-                      // Try different locations where payments might be
-                      let payments = [];
-                      if (data.payments && Array.isArray(data.payments)) {
-                          // Structure: response.data.data.payments - Correct path
-                          payments = data.payments;
-                          debug('Found payments at data.data.payments', payments.length + ' items');
-                      } else if (responseData.payments && Array.isArray(responseData.payments)) {
-                          // Fallback: response.data.payments
-                          payments = responseData.payments;
-                          debug('Found payments at data.payments', payments.length + ' items');
-                      } else if (data.data && data.data.results && Array.isArray(data.data.results)) {
-                          // Other possible structure
-                          payments = data.data.results;
-                          debug('Found payments at data.data.results', payments.length + ' items');
-                      } else if (Array.isArray(data)) {
-                          // Last resort if data itself is the array
-                          payments = data;
-                          debug('Found payments directly in data array', payments.length + ' items');
-                      }
-                      
-                      const pagination = data.pagination || {};
-                      
-                      debug('Parsed response data', { 
-                          payments: payments.length + ' items',
-                          pagination: pagination
-                      });
-                      
-                      totalPages = Math.ceil(pagination.total / supafayaPaymentHistory.limit) || 1;
-                      
-                      if (payments.length > 0) {
-                          renderPayments(payments);
-                          updatePagination();
-                          showContent();
+          // Check if Firebase is available
+          if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
+              // Get fresh token from Firebase
+              firebase.auth().currentUser.getIdToken(true)
+                  .then(function(token) {
+                      debug('Successfully obtained fresh Firebase token');
+                      sendAjaxRequest(token);
+                  })
+                  .catch(function(error) {
+                      debug('Error getting Firebase token', error);
+                      // Fallback to cookie as last resort
+                      const cookieToken = getCookie('firebase_user_token');
+                      if (cookieToken) {
+                          debug('Using token from cookie as fallback');
+                          sendAjaxRequest(cookieToken);
                       } else {
-                          debug('No payments found');
-                          showEmpty();
+                          isLoading = false;
+                          showError('Authentication error. Please log in again.');
                       }
-                  } else {
-                      const errorMessage = response.message || 'Failed to load payment history';
-                      debug('Error response', errorMessage);
-                      showError(errorMessage, response.data?.error_details || '');
-                  }
-              },
-              error: function(xhr, status, error) {
+                  });
+          } else {
+              // Fallback to cookie if Firebase isn't available
+              const cookieToken = getCookie('firebase_user_token');
+              debug('Firebase not available, using token from cookie', !!cookieToken);
+              if (cookieToken) {
+                  sendAjaxRequest(cookieToken);
+              } else {
                   isLoading = false;
-                  const errorInfo = {
-                      xhr: xhr.responseText,
-                      status: status,
-                      error: error
-                  };
-                  debug('AJAX Error', errorInfo);
-                  showError('Connection error. Please try again later.', JSON.stringify(errorInfo, null, 2));
+                  showError('Authentication error. Please log in to view payment history.');
               }
-          });
+          }
+          
+          function sendAjaxRequest(token) {
+              $.ajax({
+                  url: supafayaPaymentHistory.ajaxUrl,
+                  type: 'POST',
+                  data: requestData,
+                  beforeSend: function(xhr) {
+                      // Add Firebase token as a header
+                      xhr.setRequestHeader('X-Firebase-Token', token);
+                  },
+                  success: function(response) {
+                      isLoading = false;
+                      debug('Response received', response);
+                      
+                      // Log full response structure
+                      debug('Full response structure', JSON.stringify(response));
+                      
+                      if (response.success) {
+                          // Update pagination state
+                          currentPage = page;
+                          
+                          // Get data from response - Handle nested structure correctly
+                          const responseData = response.data || {};
+                          // The API response has data nested inside data
+                          const data = responseData.data || {};
+                          debug('Response data structure', data);
+                          
+                          // Try different locations where payments might be
+                          let payments = [];
+                          if (data.payments && Array.isArray(data.payments)) {
+                              // Structure: response.data.data.payments - Correct path
+                              payments = data.payments;
+                              debug('Found payments at data.data.payments', payments.length + ' items');
+                          } else if (responseData.payments && Array.isArray(responseData.payments)) {
+                              // Fallback: response.data.payments
+                              payments = responseData.payments;
+                              debug('Found payments at data.payments', payments.length + ' items');
+                          } else if (data.data && data.data.results && Array.isArray(data.data.results)) {
+                              // Other possible structure
+                              payments = data.data.results;
+                              debug('Found payments at data.data.results', payments.length + ' items');
+                          } else if (Array.isArray(data)) {
+                              // Last resort if data itself is the array
+                              payments = data;
+                              debug('Found payments directly in data array', payments.length + ' items');
+                          }
+                          
+                          const pagination = data.pagination || {};
+                          
+                          debug('Parsed response data', { 
+                              payments: payments.length + ' items',
+                              pagination: pagination
+                          });
+                          
+                          totalPages = Math.ceil(pagination.total / supafayaPaymentHistory.limit) || 1;
+                          
+                          if (payments.length > 0) {
+                              renderPayments(payments);
+                              updatePagination();
+                              showContent();
+                          } else {
+                              debug('No payments found');
+                              showEmpty();
+                          }
+                      } else {
+                          const errorMessage = response.message || 'Failed to load payment history';
+                          debug('Error response', errorMessage);
+                          showError(errorMessage, response.data?.error_details || '');
+                      }
+                  },
+                  error: function(xhr, status, error) {
+                      isLoading = false;
+                      const errorInfo = {
+                          xhr: xhr.responseText,
+                          status: status,
+                          error: error
+                      };
+                      debug('AJAX Error', errorInfo);
+                      showError('Connection error. Please try again later.', JSON.stringify(errorInfo, null, 2));
+                  }
+              });
+          }
       }
       
       // Helper function to get cookie value by name
