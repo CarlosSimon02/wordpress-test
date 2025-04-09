@@ -24,7 +24,7 @@ $firebase_project_id = get_option('supafaya_firebase_project_id', '');
     <!-- User dropdown (shown when logged in) -->
     <div class="auth-logged-in" style="display: none;">
         <div class="user-dropdown-toggle">
-            <div class="user-avatar">
+            <div class="user-dropdown-avatar">
                 <img id="user-avatar-img" src="" alt="User avatar" style="display: none;">
                 <span id="user-initials"></span>
             </div>
@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function() {
     background-color: rgba(0, 0, 0, 0.05);
 }
 
-.user-avatar {
+.user-dropdown-avatar {
     width: 32px;
     height: 32px;
     border-radius: 50%;
@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', function() {
     justify-content: center;
 }
 
-.user-avatar img {
+.user-dropdown-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;

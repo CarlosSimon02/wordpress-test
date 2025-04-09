@@ -1337,7 +1337,7 @@
 }
 
 /* Auth Container Styles */
-.supafaya-auth-container {
+.supafaya-auth-container, .supafaya-auth-login-container {
   --primary-color: #8800FF;
   --primary-hover: #6f00cc;
   --text-color: #2d3748;
@@ -1353,7 +1353,7 @@
 }
 
 /* Auth Card */
-.auth-card {
+.auth-card, .login-auth-card {
   background: white;
   border-radius: 12px;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
@@ -1362,37 +1362,37 @@
 }
 
 /* Auth Header */
-.auth-header {
+.auth-header, .login-auth-header {
   margin-bottom: 1.5rem;
 }
 
-.auth-logo {
+.auth-logo, .login-auth-logo {
   margin-bottom: 1rem;
 }
 
-.auth-logo svg {
+.auth-logo svg, .login-auth-logo svg {
   color: var(--primary-color);
 }
 
-.auth-header h2 {
+.auth-header h2, .login-auth-header h2 {
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--text-color);
   margin: 0 0 0.5rem;
 }
 
-.auth-subtext {
+.auth-subtext, .login-auth-subtext {
   color: var(--text-light);
   font-size: 0.9375rem;
   margin: 0;
 }
 
 /* User Avatar */
-.user-avatar-container {
+.user-avatar-container, .login-user-avatar-container {
   margin-bottom: 1rem;
 }
 
-.user-avatar {
+.user-avatar, .login-user-avatar {
   width: 80px;
   height: 80px;
   border-radius: 50%;
@@ -1405,27 +1405,27 @@
   overflow: hidden;
 }
 
-.user-avatar img {
+.user-avatar img, .login-user-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.user-avatar span {
+.user-avatar span, .login-user-avatar span {
   font-size: 1.75rem;
   font-weight: 600;
   color: var(--primary-color);
 }
 
 /* Auth Actions */
-.auth-actions {
+.auth-actions, .login-auth-actions {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   margin-top: 1.5rem;
 }
 
-.auth-button {
+.auth-button, .login-auth-button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1439,49 +1439,49 @@
   text-decoration: none;
 }
 
-.auth-button svg {
+.auth-button svg, .login-auth-button svg {
   width: 16px;
   height: 16px;
 }
 
-.auth-button.primary {
+.auth-button.primary, .login-auth-button.login-primary {
   background-color: var(--primary-color);
   color: white;
   border: none;
 }
 
-.auth-button.primary:hover {
+.auth-button.primary:hover, .login-auth-button.login-primary:hover {
   background-color: var(--primary-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.auth-button.secondary {
+.auth-button.secondary, .login-auth-button.login-secondary {
   background-color: white;
   color: var(--text-color);
   border: 1px solid var(--border-color);
 }
 
-.auth-button.secondary:hover {
+.auth-button.secondary:hover, .login-auth-button.login-secondary:hover {
   background-color: var(--bg-color);
   border-color: var(--primary-color);
   color: var(--primary-color);
 }
 
 /* Loading State */
-.auth-loading {
+.auth-loading, .login-auth-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 1.5rem 0;
 }
 
-.loading-spinner {
+.loading-spinner, .login-loading-spinner {
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
 }
 
-.loading-spinner svg {
+.loading-spinner svg, .login-loading-spinner svg {
   color: var(--primary-color);
 }
 
@@ -1490,13 +1490,18 @@
   to { transform: rotate(360deg); }
 }
 
-.auth-loading p {
+@keyframes login-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.auth-loading p, .login-auth-loading p {
   color: var(--text-light);
   margin: 0;
 }
 
 /* Error Message */
-.auth-error {
+.auth-error, .login-auth-error {
   background-color: rgba(229, 62, 62, 0.1);
   color: var(--error-color);
   padding: 0.75rem 1rem;
@@ -1507,19 +1512,19 @@
 }
 
 /* Auth Footer */
-.auth-footer {
+.auth-footer, .login-auth-footer {
   margin-top: 1.5rem;
   font-size: 0.875rem;
   color: var(--text-light);
 }
 
-.auth-link {
+.auth-link, .login-auth-link {
   color: var(--primary-color);
   text-decoration: none;
   font-weight: 500;
 }
 
-.auth-link:hover {
+.auth-link:hover, .login-auth-link:hover {
   text-decoration: underline;
 }
 
@@ -1586,15 +1591,15 @@
 
 /* Responsive Adjustments */
 @media (max-width: 480px) {
-  .auth-card {
+  .auth-card, .login-auth-card {
       padding: 1.5rem;
   }
   
-  .auth-header h2 {
+  .auth-header h2, .login-auth-header h2 {
       font-size: 1.25rem;
   }
   
-  .auth-button {
+  .auth-button, .login-auth-button {
       padding: 0.625rem 0.875rem;
       font-size: 0.875rem;
   }
