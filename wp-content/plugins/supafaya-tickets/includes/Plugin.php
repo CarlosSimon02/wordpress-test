@@ -4,12 +4,14 @@ namespace SupafayaTickets;
 use SupafayaTickets\Controllers\EventController;
 use SupafayaTickets\Controllers\TicketController;
 use SupafayaTickets\Controllers\PaymentProofController;
+use SupafayaTickets\Controllers\AnalyticsController;
 use SupafayaTickets\Auth\FirebaseAuth;
 
 class Plugin {
     private $event_controller;
     private $ticket_controller;
     private $payment_proof_controller;
+    private $analytics_controller;
     private $firebase_auth;
     
     public function init() {
@@ -17,6 +19,7 @@ class Plugin {
         $this->event_controller = new EventController();
         $this->ticket_controller = new TicketController();
         $this->payment_proof_controller = new PaymentProofController();
+        $this->analytics_controller = new AnalyticsController();
         
         // Initialize Firebase Auth
         $this->firebase_auth = new FirebaseAuth();
@@ -82,6 +85,15 @@ class Plugin {
             true
         );
         
+        // Register analytics script
+        wp_register_script(
+            'supafaya-analytics',
+            SUPAFAYA_PLUGIN_URL . 'assets/js/supafaya-analytics.js',
+            ['jquery', 'supafaya-tickets-script'],
+            SUPAFAYA_VERSION,
+            true
+        );
+        
         // Register the purchased items script
         wp_register_script(
             'supafaya-purchased-items',
@@ -140,13 +152,21 @@ class Plugin {
             }
         }
         
+        // Get the default organization ID from settings
+        $default_organization_id = get_option('supafaya_organization_id', '');
+        
+        // Get the REST API URL
+        $rest_url = rest_url('supafaya/v1/');
+        
         wp_localize_script('supafaya-tickets-script', 'supafayaTickets', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('supafaya-tickets-nonce'),
             'pluginUrl' => SUPAFAYA_PLUGIN_URL,
             'loginUrl' => $login_url,
             'profileUrl' => $profile_url,
-            'paymentResultUrl' => $payment_result_url
+            'paymentResultUrl' => $payment_result_url,
+            'restUrl' => $rest_url,
+            'defaultOrganizationId' => $default_organization_id
         ]);
         
         // Enqueue the script whenever the shortcode is used
@@ -204,6 +224,9 @@ class Plugin {
                 SUPAFAYA_VERSION,
                 true
             );
+            
+            // Enqueue the analytics script
+            wp_enqueue_script('supafaya-analytics');
             
             // Enqueue scripts and styles for event pages
             if (isset($_GET['event_id'])) {
