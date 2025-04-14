@@ -316,26 +316,26 @@
         align-items: center;
         gap: 8px;
         padding: 12px 20px;
-        background-color: #4285f4;
+        background-color: #8800FF;
         color: white;
         border: none;
         border-radius: 8px;
         font-size: 14px;
         font-weight: 500;
         cursor: pointer;
-        box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+        box-shadow: 0 4px 12px rgba(136, 0, 255, 0.4);
         transition: all 0.3s ease;
     }
 
     .purchased-items-button:hover {
-        background-color: #3367d6;
+        background-color: #8800FF;
         transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(66, 133, 244, 0.4);
+        box-shadow: 0 6px 16px rgba(136, 0, 255, 0.4);
     }
 
     .purchased-items-button:active {
         transform: translateY(0);
-        box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
+        box-shadow: 0 2px 8px rgba(136, 0, 255, 0.4);
     }
 
     .purchased-items-button svg {
@@ -464,7 +464,7 @@
         width: 40px;
         height: 40px;
         border: 3px solid rgba(66, 133, 244, 0.1);
-        border-top: 3px solid #4285f4;
+        border-top: 3px solid #8800FF;
         border-radius: 50%;
         animation: spin 1s linear infinite;
         margin-bottom: 20px;
@@ -553,13 +553,13 @@
         left: 0;
         width: 100%;
         height: 3px;
-        background-color: #4285f4;
+        background-color: #8800FF;
         transform: scaleX(0);
         transition: transform 0.2s ease;
     }
 
     .tab-button.active {
-        color: #4285f4;
+        color: #8800FF;
         font-weight: 600;
     }
 
@@ -607,7 +607,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #4285f4;
+        color: #8800FF;
         flex-shrink: 0;
     }
 
@@ -634,7 +634,7 @@
 
     .item-price {
         font-weight: 600;
-        color: #4285f4;
+        color: #8800FF;
         white-space: nowrap;
         font-size: 15px;
         flex-shrink: 0;
@@ -661,7 +661,7 @@
     .addon-item {
         margin-left: 24px;
         background-color: #f5f9ff;
-        border-left: 3px solid #4285f4;
+        border-left: 3px solid #8800FF;
     }
 
     /* QR Code Button */
@@ -671,7 +671,7 @@
         gap: 6px;
         margin-top: 10px;
         padding: 6px 12px;
-        background-color: #4285f4;
+        background-color: #8800FF;
         color: white;
         border: none;
         border-radius: 20px;

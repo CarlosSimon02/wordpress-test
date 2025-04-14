@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .supafaya-login-button {
     display: inline-block;
     padding: 8px 16px;
-    background-color: #4285f4;
+    background-color: #8800FF;
     color: white !important;
     border-radius: 4px;
     text-decoration: none;

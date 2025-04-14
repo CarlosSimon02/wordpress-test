@@ -175,7 +175,7 @@ if (!empty($transaction_id)) {
     }
     
     .primary-button {
-        background-color: #4361ee;
+        background-color: #8800FF;
         color: white;
         border: none;
     }
@@ -187,8 +187,8 @@ if (!empty($transaction_id)) {
     
     .secondary-button {
         background-color: transparent;
-        color: #4361ee;
-        border: 2px solid #4361ee;
+        color: #8800FF;
+        border: 2px solid #8800FF;
     }
     
     .secondary-button:hover {

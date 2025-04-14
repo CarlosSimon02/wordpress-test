@@ -127,7 +127,7 @@
 <style>
   /* Modern CSS Variables */
   :root {
-    --primary-color: #4361ee;
+    --primary-color: #8800FF;
     --primary-hover: #3a56d4;
     --success-color: #4BB543;
     --warning-color: #FFA500;
