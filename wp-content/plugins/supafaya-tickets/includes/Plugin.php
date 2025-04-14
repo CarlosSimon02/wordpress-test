@@ -26,6 +26,9 @@ class Plugin {
         add_action('admin_menu', [$this, 'add_admin_menu']);
         add_action('admin_init', [$this, 'register_settings']);
         
+        // Add an admin notice about CSS caching
+        add_action('admin_notices', [$this, 'add_caching_notice']);
+        
         add_shortcode('supafaya_events', array($this, 'events_shortcode'));
         add_shortcode('supafaya_event', array($this, 'event_shortcode'));
         add_shortcode('supafaya_login_form', array($this, 'login_form_shortcode'));
@@ -49,50 +52,95 @@ class Plugin {
         add_action('wp_ajax_nopriv_supafaya_proof_of_payment', array($this->payment_proof_controller, 'ajax_submit_proof_of_payment'));
     }
     
+    /**
+     * Get a dynamic version number based on file modification time
+     * 
+     * @param string $file_path Path to the file
+     * @return string Version string
+     */
+    private function get_file_version($file_path) {
+        $version = SUPAFAYA_VERSION;
+        
+        if (file_exists($file_path)) {
+            $version .= '.' . filemtime($file_path);
+        }
+        
+        // Add timestamp to force cache busting for admins
+        if ($this->is_admin_user()) {
+            $version .= '.' . time();
+        }
+        
+        return $version;
+    }
+    
+    /**
+     * Check if the current user is an admin
+     * 
+     * @return boolean
+     */
+    private function is_admin_user() {
+        return is_user_logged_in() && current_user_can('manage_options');
+    }
+    
     public function register_assets() {
+        // Get dynamic versions for CSS files based on file modification time
+        $main_css_file = SUPAFAYA_PLUGIN_DIR . 'assets/css/supafaya-tickets.css';
+        $main_css_version = $this->get_file_version($main_css_file);
+        
+        $proof_css_file = SUPAFAYA_PLUGIN_DIR . 'assets/css/proof-of-payment.css';
+        $proof_css_version = $this->get_file_version($proof_css_file);
+        
         wp_enqueue_style(
             'supafaya-tickets-style',
             SUPAFAYA_PLUGIN_URL . 'assets/css/supafaya-tickets.css',
             [],
-            SUPAFAYA_VERSION
+            $main_css_version
         );
         
         wp_register_style(
             'supafaya-proof-of-payment-style',
             SUPAFAYA_PLUGIN_URL . 'assets/css/proof-of-payment.css',
             ['supafaya-tickets-style'],
-            SUPAFAYA_VERSION
+            $proof_css_version
         );
+        
+        // Get dynamic version for main JS file
+        $main_js_file = SUPAFAYA_PLUGIN_DIR . 'assets/js/supafaya-tickets.js';
+        $main_js_version = $this->get_file_version($main_js_file);
         
         wp_register_script(
             'supafaya-tickets-script',
             SUPAFAYA_PLUGIN_URL . 'assets/js/supafaya-tickets.js',
             ['jquery'],
-            SUPAFAYA_VERSION,
+            $main_js_version,
             true
         );
         
+        // Register other scripts with dynamic versions
+        $analytics_js_file = SUPAFAYA_PLUGIN_DIR . 'assets/js/supafaya-analytics.js';
         wp_register_script(
             'supafaya-analytics',
             SUPAFAYA_PLUGIN_URL . 'assets/js/supafaya-analytics.js',
             ['jquery', 'supafaya-tickets-script'],
-            SUPAFAYA_VERSION,
+            $this->get_file_version($analytics_js_file),
             true
         );
         
+        $purchased_items_js_file = SUPAFAYA_PLUGIN_DIR . 'assets/js/purchased-items.js';
         wp_register_script(
             'supafaya-purchased-items',
             SUPAFAYA_PLUGIN_URL . 'assets/js/purchased-items.js',
             ['jquery', 'supafaya-tickets-script'],
-            SUPAFAYA_VERSION,
+            $this->get_file_version($purchased_items_js_file),
             true
         );
         
+        $proof_js_file = SUPAFAYA_PLUGIN_DIR . 'assets/js/proof-of-payment.js';
         wp_register_script(
             'supafaya-proof-of-payment',
             SUPAFAYA_PLUGIN_URL . 'assets/js/proof-of-payment.js',
             ['jquery', 'supafaya-tickets-script'],
-            SUPAFAYA_VERSION,
+            $this->get_file_version($proof_js_file),
             true
         );
         
@@ -181,22 +229,29 @@ class Plugin {
                 $depends[] = 'supafaya-firebase';
             }
             
+            // Get dynamic version for main JS file
+            $main_js_file = SUPAFAYA_PLUGIN_DIR . 'assets/js/supafaya-tickets.js';
+            $main_js_version = $this->get_file_version($main_js_file);
+            
             wp_enqueue_script(
                 'supafaya-tickets-script',
                 SUPAFAYA_PLUGIN_URL . 'assets/js/supafaya-tickets.js',
                 $depends,
-                SUPAFAYA_VERSION,
+                $main_js_version,
                 true
             );
             
             wp_enqueue_script('supafaya-analytics');
             
             if (isset($_GET['event_id'])) {
+                $purchased_items_js_file = SUPAFAYA_PLUGIN_DIR . 'assets/js/purchased-items.js';
+                $proof_js_file = SUPAFAYA_PLUGIN_DIR . 'assets/js/proof-of-payment.js';
+                
                 wp_enqueue_script(
                     'supafaya-purchased-items',
                     SUPAFAYA_PLUGIN_URL . 'assets/js/purchased-items.js',
                     ['jquery', 'supafaya-tickets-script'],
-                    SUPAFAYA_VERSION,
+                    $this->get_file_version($purchased_items_js_file),
                     true
                 );
                 
@@ -204,7 +259,7 @@ class Plugin {
                     'supafaya-proof-of-payment',
                     SUPAFAYA_PLUGIN_URL . 'assets/js/proof-of-payment.js',
                     ['jquery', 'supafaya-tickets-script'],
-                    SUPAFAYA_VERSION,
+                    $this->get_file_version($proof_js_file),
                     true
                 );
                 
@@ -449,5 +504,27 @@ class Plugin {
         }
         
         return '<p>Payment history feature is not available.</p>';
+    }
+    
+    /**
+     * Add an admin notice about CSS caching behavior
+     */
+    public function add_caching_notice() {
+        // Only show on the Supafaya plugin pages
+        $screen = get_current_screen();
+        if (!$screen || strpos($screen->id, 'supafaya-tickets') === false) {
+            return;
+        }
+        
+        ?>
+        <div class="notice notice-info is-dismissible">
+            <p>
+                <strong>Supafaya Tickets:</strong> 
+                CSS and JS files are now versioned based on their modification time. 
+                As an admin, you'll always see the latest changes immediately.
+                Regular users will see changes once their browser cache refreshes or you update the files.
+            </p>
+        </div>
+        <?php
     }
 }
