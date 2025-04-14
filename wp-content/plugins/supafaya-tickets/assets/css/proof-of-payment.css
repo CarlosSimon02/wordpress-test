@@ -231,6 +231,14 @@
     font-size: 16px;
 }
 
+.payment-methods img {
+    max-width: 200px;
+    margin-bottom: 15px;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+}
+
 .payment-method {
     display: flex;
     justify-content: space-between;

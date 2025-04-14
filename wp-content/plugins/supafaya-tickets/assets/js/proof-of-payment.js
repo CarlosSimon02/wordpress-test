@@ -137,23 +137,20 @@
                                         </div>
                                         <div class="payment-instructions">
                                             <h4>Payment Instructions</h4>
-                                            <p>If you wish to transact through your e-payment gateways, please send the total order value to the following accounts:</p>
+                                            <p>If you wish to transact through your e-payment gateways, please send the total order value to the following account:</p>
                                             <div class="payment-methods">
+                                               <img src="${supafayaTickets.pluginUrl}/assets/images/kasikornbank.png" alt="Kasikornbank" class="bank-logo" style="max-width: 200px; margin-bottom: 15px;">
                                                 <div class="payment-method">
-                                                    <strong>2C2P:</strong>
-                                                    <span>####-####-####</span>
+                                                    <strong>Bank:</strong>
+                                                    <span>KASIKORNBANK</span>
                                                 </div>
                                                 <div class="payment-method">
-                                                    <strong>OpnPayments:</strong>
-                                                    <span>####-####-####</span>
+                                                    <strong>Account Name:</strong>
+                                                    <span>Kinnect Co.,LTD.</span>
                                                 </div>
                                                 <div class="payment-method">
-                                                    <strong>TrueMoney:</strong>
-                                                    <span>####-####-####</span>
-                                                </div>
-                                                <div class="payment-method">
-                                                    <strong>Rabbit LINE:</strong>
-                                                    <span>####-####-####</span>
+                                                    <strong>Account Number:</strong>
+                                                    <span>199-3-08772-2</span>
                                                 </div>
                                             </div>
                                             <p class="payment-note">Please take a screenshot of the transaction in order for our team to verify the payment. We'll approve within 24 hours.</p>
