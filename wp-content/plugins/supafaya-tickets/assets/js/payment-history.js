@@ -1,44 +1,18 @@
 (function($) {
   'use strict';
   
-  // Helper function for debug logging
-  function debug(message, data) {
-      console.log('Payment History Debug:', message, data !== undefined ? data : '');
-      
-      // Only log to console when debug mode is enabled
-      // if (supafayaPaymentHistory && supafayaPaymentHistory.debug) {
-      //     if (data !== undefined) {
-      //         console.log('Payment History Debug:', message, data);
-      //     } else {
-      //         console.log('Payment History Debug:', message);
-      //     }
-      // }
-  }
-  
-  // Main payment history functionality
   function initPaymentHistory() {
       const container = $('.supafaya-payment-history');
       if (container.length === 0) {
-          debug('Payment history container not found');
           return;
       }
       
-      debug('Initializing payment history', {
-          organizationId: supafayaPaymentHistory.organizationId,
-          limit: supafayaPaymentHistory.limit,
-          page: supafayaPaymentHistory.currentPage
-      });
-      
-      // Add user info if available
       if (supafayaPaymentHistory.userInfo) {
           const userInfoEl = $('<div class="user-info-display"></div>')
               .text(supafayaPaymentHistory.userInfo)
               .appendTo(container.find('.payment-history-header'));
-          
-          debug('Added user info to header');
       }
       
-      // Elements
       const historyList = $('.payment-history-list');
       const emptyState = $('.payment-history-empty');
       const errorState = $('.payment-history-error');
@@ -51,28 +25,22 @@
       const retryButton = $('.retry-button');
       const refreshButton = $('.refresh-button');
       
-      // Payment detail dialog elements
       const detailDialog = $('.payment-detail-dialog');
       const dialogOverlay = $('.payment-detail-dialog-overlay');
       const closeDialogButton = $('.close-dialog');
       const dialogContent = $('.dialog-content');
       
-      // Pagination state
       let currentPage = supafayaPaymentHistory.currentPage || 1;
       let totalPages = 1;
       let isLoading = false;
       
-      // Load payment history
       function loadPaymentHistory(page = 1) {
           if (isLoading) {
-              debug('Already loading, request ignored');
               return;
           }
           
           isLoading = true;
           showLoading();
-          
-          debug('Loading payment history for page ' + page);
           
           const requestData = {
               action: 'supafaya_load_payment_history',
@@ -81,39 +49,23 @@
               limit: supafayaPaymentHistory.limit,
               organization_id: supafayaPaymentHistory.organizationId
           };
-          
-          debug('Request payload', requestData);
 
-          // First, try to get token from cookie as initial approach
           const cookieToken = getCookie('firebase_user_token');
           
           if (cookieToken) {
-              debug('Found token in cookie, using it for request');
               sendAjaxRequest(cookieToken);
           } else {
-              // Check if Firebase is available
               if (typeof firebase !== 'undefined') {
-                  debug('Firebase is defined, checking auth module');
-                  
                   if (firebase.auth) {
-                      debug('Firebase auth module is available');
-                      
-                      // Get current user (might be null)
                       const currentUser = firebase.auth().currentUser;
-                      debug('Current user status', currentUser ? 'Logged in' : 'Not logged in or not initialized yet');
                       
                       if (currentUser) {
-                          // User is logged in, get fresh token
                           firebase.auth().currentUser.getIdToken(true)
                               .then(function(token) {
-                                  debug('Successfully obtained fresh Firebase token');
                                   sendAjaxRequest(token);
                               })
                               .catch(function(error) {
-                                  debug('Error getting Firebase token', error);
-                                  // If we fail to get token, check cookie again as fallback
                                   if (cookieToken) {
-                                      debug('Using token from cookie as fallback');
                                       sendAjaxRequest(cookieToken);
                                   } else {
                                       isLoading = false;
@@ -121,50 +73,37 @@
                                   }
                               });
                       } else {
-                          // If user is not logged in, try to wait for auth initialization
-                          debug('User not logged in, waiting for auth state change');
-                          
-                          // Set up a one-time auth state listener
                           const unsubscribe = firebase.auth().onAuthStateChanged(function(user) {
-                              unsubscribe(); // Unsubscribe immediately to avoid multiple calls
+                              unsubscribe();
                               
                               if (user) {
-                                  debug('Auth state changed - user logged in');
-                                  // Now get token with the logged in user
                                   user.getIdToken(true)
                                       .then(function(token) {
-                                          debug('Got token after auth state change');
                                           sendAjaxRequest(token);
                                       })
                                       .catch(function(error) {
-                                          debug('Error getting token after auth state change', error);
                                           isLoading = false;
                                           showError('Authentication error. Please try refreshing the page.');
                                       });
                               } else {
-                                  debug('Auth state changed - user still not logged in');
                                   isLoading = false;
                                   showError('Authentication required. Please log in to view payment history.');
                               }
                           });
                           
-                          // Set a timeout to prevent indefinite waiting
                           setTimeout(function() {
-                              unsubscribe(); // Clean up listener if it hasn't fired
+                              unsubscribe();
                               if (isLoading) {
-                                  // If still loading after timeout, try cookie one more time
                                   if (cookieToken) {
-                                      debug('Timeout reached, using cookie token as last resort');
                                       sendAjaxRequest(cookieToken);
                                   } else {
                                       isLoading = false;
                                       showError('Authentication timed out. Please try refreshing the page.');
                                   }
                               }
-                          }, 5000); // 5 second timeout
+                          }, 5000);
                       }
                   } else {
-                      debug('Firebase auth module not available, trying cookie token');
                       if (cookieToken) {
                           sendAjaxRequest(cookieToken);
                       } else {
@@ -173,7 +112,6 @@
                       }
                   }
               } else {
-                  debug('Firebase not loaded, trying cookie token');
                   if (cookieToken) {
                       sendAjaxRequest(cookieToken);
                   } else {
@@ -189,52 +127,29 @@
                   type: 'POST',
                   data: requestData,
                   beforeSend: function(xhr) {
-                      // Add Firebase token as a header
                       xhr.setRequestHeader('X-Firebase-Token', token);
                   },
                   success: function(response) {
                       isLoading = false;
-                      debug('Response received', response);
-                      
-                      // Log full response structure
-                      debug('Full response structure', JSON.stringify(response));
                       
                       if (response.success) {
-                          // Update pagination state
                           currentPage = page;
                           
-                          // Get data from response - Handle nested structure correctly
                           const responseData = response.data || {};
-                          // The API response has data nested inside data
                           const data = responseData.data || {};
-                          debug('Response data structure', data);
                           
-                          // Try different locations where payments might be
                           let payments = [];
                           if (data.payments && Array.isArray(data.payments)) {
-                              // Structure: response.data.data.payments - Correct path
                               payments = data.payments;
-                              debug('Found payments at data.data.payments', payments.length + ' items');
                           } else if (responseData.payments && Array.isArray(responseData.payments)) {
-                              // Fallback: response.data.payments
                               payments = responseData.payments;
-                              debug('Found payments at data.payments', payments.length + ' items');
                           } else if (data.data && data.data.results && Array.isArray(data.data.results)) {
-                              // Other possible structure
                               payments = data.data.results;
-                              debug('Found payments at data.data.results', payments.length + ' items');
                           } else if (Array.isArray(data)) {
-                              // Last resort if data itself is the array
                               payments = data;
-                              debug('Found payments directly in data array', payments.length + ' items');
                           }
                           
                           const pagination = data.pagination || {};
-                          
-                          debug('Parsed response data', { 
-                              payments: payments.length + ' items',
-                              pagination: pagination
-                          });
                           
                           totalPages = Math.ceil(pagination.total / supafayaPaymentHistory.limit) || 1;
                           
@@ -243,12 +158,10 @@
                               updatePagination();
                               showContent();
                           } else {
-                              debug('No payments found');
                               showEmpty();
                           }
                       } else {
                           const errorMessage = response.message || 'Failed to load payment history';
-                          debug('Error response', errorMessage);
                           showError(errorMessage, response.data?.error_details || '');
                       }
                   },
@@ -259,14 +172,12 @@
                           status: status,
                           error: error
                       };
-                      debug('AJAX Error', errorInfo);
                       showError('Connection error. Please try again later.', JSON.stringify(errorInfo, null, 2));
                   }
               });
           }
       }
       
-      // Helper function to get cookie value by name
       function getCookie(name) {
           const value = `; ${document.cookie}`;
           const parts = value.split(`; ${name}=`);
@@ -274,25 +185,14 @@
           return null;
       }
       
-      // Render payment items
       function renderPayments(payments) {
-          debug('Rendering ' + payments.length + ' payment items');
           let html = '';
           
           payments.forEach(function(payment) {
-              // Format payment data
               const status = getStatusDisplay(payment.status);
               const formattedDate = formatDate(payment.createdAt);
               const formattedAmount = formatCurrency(payment.amount, payment.currency);
               const eventName = payment.eventId || 'Unknown Event';
-              
-              debug('Payment item data', {
-                  id: payment.id,
-                  status: status,
-                  date: formattedDate,
-                  amount: formattedAmount,
-                  event: eventName
-              });
               
               html += `
                   <div class="payment-item" data-id="${payment.id}" data-payment='${JSON.stringify(payment)}'>
@@ -321,10 +221,8 @@
           });
           
           historyList.html(html);
-          debug('Payment items rendered');
       }
       
-      // Get status display info
       function getStatusDisplay(status) {
           switch (status?.toLowerCase()) {
               case 'completed':
@@ -342,14 +240,12 @@
           }
       }
       
-      // Format date
       function formatDate(dateString) {
         if (!dateString) return 'Unknown date';
     
         const date = new Date(dateString);
         if (isNaN(date.getTime())) return 'Invalid date';
     
-        // Format the date in a more readable and consistent way
         return date.toLocaleString(undefined, {
             year: 'numeric',
             month: 'short',
@@ -360,9 +256,8 @@
             hour12: true,
             timeZoneName: 'short'
         });
-    }
+      }
       
-      // Format currency
       function formatCurrency(amount, currency) {
           if (amount === undefined || amount === null) return 'N/A';
           
@@ -375,7 +270,6 @@
           return formatter.format(amount);
       }
       
-      // Escape HTML
       function escapeHtml(unsafe) {
           if (!unsafe) return '';
           return unsafe
@@ -386,7 +280,6 @@
               .replace(/'/g, "&#039;");
       }
       
-      // Update pagination controls
       function updatePagination() {
           currentPageEl.text(currentPage);
           totalPagesEl.text(totalPages);
@@ -397,7 +290,6 @@
           paginationContainer.show();
       }
       
-      // Display states
       function showLoading() {
           loadingIndicator.show();
           historyList.find('.payment-item').hide();
@@ -436,7 +328,6 @@
           paginationContainer.hide();
       }
       
-      // Pagination event handlers
       prevButton.on('click', function() {
           if (currentPage > 1) {
               loadPaymentHistory(currentPage - 1);
@@ -449,34 +340,28 @@
           }
       });
       
-      // Retry button handler
       retryButton.on('click', function() {
           loadPaymentHistory(currentPage);
       });
       
-      // Refresh button handler
       refreshButton.on('click', function() {
           loadPaymentHistory(currentPage);
       });
       
-      // View details button handler
       historyList.on('click', '.view-details-button', function() {
           const paymentId = $(this).data('id');
           openDetailDialog(paymentId);
       });
       
-      // Dialog handlers
       closeDialogButton.on('click', closeDetailDialog);
       dialogOverlay.on('click', closeDetailDialog);
       
-      // Handle ESC key to close dialog
       $(document).on('keydown', function(e) {
           if (e.key === 'Escape' && detailDialog.is(':visible')) {
               closeDetailDialog();
           }
       });
       
-      // Open payment detail dialog
       function openDetailDialog(paymentId) {
           dialogContent.html(`
               <div class="detail-loading">
@@ -488,18 +373,15 @@
           `);
           
           detailDialog.css('display', 'flex');
-          $('body').css('overflow', 'hidden'); // Prevent scrolling
+          $('body').css('overflow', 'hidden');
           
-          // Find the payment in the DOM
           const paymentItem = historyList.find(`.payment-item[data-id="${paymentId}"]`);
           if (paymentItem.length) {
-              // Get payment data from the DOM
               const eventName = paymentItem.find('.payment-event').text();
               const date = paymentItem.find('.payment-time').text().trim();
               const amount = paymentItem.find('.payment-amount').text();
               const status = paymentItem.find('.payment-status').text();
               
-              // Find the payment in our current data
               const payment = historyList.find(`.payment-item[data-id="${paymentId}"]`).data('payment');
               if (!payment) {
                   dialogContent.html('<p>Payment details not found.</p>');
@@ -578,20 +460,15 @@
           }
       }
       
-      // Close payment detail dialog
       function closeDetailDialog() {
           detailDialog.css('display', 'none');
-          $('body').css('overflow', ''); // Restore scrolling
+          $('body').css('overflow', '');
       }
       
-      // Initial load
-      debug('Starting initial load of payment history');
       loadPaymentHistory(currentPage);
   }
   
-  // Initialize when document is ready
   $(function() {
-      debug('Document ready, initializing payment history');
       initPaymentHistory();
   });
   

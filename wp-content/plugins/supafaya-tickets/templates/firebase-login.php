@@ -135,152 +135,98 @@
 
 <script>
 jQuery(document).ready(function($) {
-    // Debug flag
-    const debug = true;
-    
-    // Debug logger
-    function logDebug(message, data) {
-        if (debug) {
-            if (data) {
-                console.log('[Firebase Login]', message, data);
-            } else {
-                console.log('[Firebase Login]', message);
-            }
-        }
-    }
-    
-    // Handle auth state changes
     function handleAuthState(user) {
-        logDebug('Auth state changed', user);
-        
-        // Hide loading state first
         $('.login-auth-loading-state').hide();
         
         if (user) {
-            // User is signed in
             $('.login-auth-logged-in').show();
             $('.login-auth-logged-out').hide();
             
-            logDebug('User is logged in', {
-                displayName: user.displayName,
-                email: user.email,
-                photoURL: user.photoURL
-            });
-            
-            // Update user info - check for displayName and fallback to email
             const displayName = user.displayName || (user.email ? user.email.split('@')[0] : 'User');
             $('#login-user-name').text(displayName);
-            logDebug('Set display name', displayName);
             
-            // Update avatar
             if (user.photoURL) {
-                logDebug('User has photo URL', user.photoURL);
                 $('#login-user-avatar-img')
                     .attr('src', user.photoURL)
                     .on('load', function() {
                         $(this).show();
                         $('#login-user-initials').hide();
-                        logDebug('User photo loaded successfully');
                     })
                     .on('error', function() {
-                        logDebug('Failed to load user photo, showing initials instead');
                         $(this).hide();
                         showUserInitials(user);
                     });
             } else {
-                logDebug('No photo URL, showing initials');
                 $('#login-user-avatar-img').hide();
                 showUserInitials(user);
             }
             
-            // Check for user details in Firebase cookie as a backup
             if (!user.displayName && !user.photoURL) {
-                logDebug('Missing user data, checking cookie');
                 tryLoadUserFromCookie();
             }
         } else {
-            // User is signed out
-            logDebug('User is logged out');
             $('.login-auth-logged-in').hide();
             $('.login-auth-logged-out').show();
         }
     }
     
-    // Show user initials
     function showUserInitials(user) {
         let initials;
         
         if (user.displayName) {
-            // Get initials from display name
             initials = user.displayName
                 .split(' ')
                 .map(n => n[0])
                 .join('')
                 .toUpperCase();
         } else if (user.email) {
-            // Get first letter of email
             initials = user.email[0].toUpperCase();
         } else {
-            // Fallback
             initials = 'U';
         }
         
         $('#login-user-initials').text(initials).show();
-        logDebug('Set user initials', initials);
     }
     
-    // Try to load user data from cookie
     function tryLoadUserFromCookie() {
         try {
             const firebaseUserCookie = getCookie('firebase_user');
-            logDebug('Firebase user cookie', firebaseUserCookie);
             
             if (firebaseUserCookie) {
                 const userData = JSON.parse(firebaseUserCookie);
-                logDebug('Parsed user data from cookie', userData);
                 
-                // Update display name if needed
                 if (userData.displayName && $('#login-user-name').text() === 'User') {
                     $('#login-user-name').text(userData.displayName);
-                    logDebug('Updated display name from cookie', userData.displayName);
                 }
                 
-                // Update photo if needed
                 if (userData.photoURL && $('#login-user-avatar-img').is(':hidden')) {
                     $('#login-user-avatar-img')
                         .attr('src', userData.photoURL)
                         .on('load', function() {
                             $(this).show();
                             $('#login-user-initials').hide();
-                            logDebug('Loaded user photo from cookie');
                         })
                         .on('error', function() {
-                            logDebug('Failed to load photo from cookie');
+                            // Silent fail
                         });
                 }
             }
         } catch (e) {
-            logDebug('Error loading user data from cookie', e);
+            // Silent fail
         }
     }
     
-    // Helper function to get a cookie value
     function getCookie(name) {
         const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
         return match ? decodeURIComponent(match[2]) : null;
     }
     
-    // Initialize Firebase auth state listener
     function initFirebaseAuth() {
-        logDebug('Initializing Firebase Auth');
-        
-        // First show loading state
         $('.login-auth-loading-state').show();
         $('.login-auth-logged-in, .login-auth-logged-out').hide();
         
         const checkFirebaseInit = setInterval(function() {
             if (window.firebase && window.firebase.auth) {
-                logDebug('Firebase Auth is available, setting up auth state listener');
                 clearInterval(checkFirebaseInit);
                 
                 firebase.auth().onAuthStateChanged(function(user) {
@@ -289,40 +235,29 @@ jQuery(document).ready(function($) {
             }
         }, 100);
         
-        // Set a timeout to show the logged-out view if Firebase doesn't initialize
         setTimeout(function() {
             if ($('.login-auth-loading-state').is(':visible')) {
-                logDebug('Timed out waiting for Firebase, showing logged out state');
                 $('.login-auth-loading-state').hide();
                 $('.login-auth-logged-out').show();
             }
         }, 5000);
     }
     
-    // Handle logout
     $('.login-firebase-logout-button').on('click', function(e) {
         e.preventDefault();
-        logDebug('Logout button clicked');
         
-        // Show loading state
         $('.login-auth-logged-in').hide();
         $('.login-auth-loading-state').show();
         
         firebase.auth().signOut().then(function() {
-            logDebug('User signed out successfully');
-            // Clear any redirect cookies
             document.cookie = 'supafaya_checkout_redirect=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         }).catch(function(error) {
-            logDebug('Error signing out', error);
-            // Show error message
             alert('Error signing out: ' + error.message);
-            // Reshow logged in state
             $('.login-auth-loading-state').hide();
             $('.login-auth-logged-in').show();
         });
     });
     
-    // Start initialization
     initFirebaseAuth();
 });
 </script>
