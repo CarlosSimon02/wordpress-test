@@ -83,36 +83,103 @@
           };
           
           debug('Request payload', requestData);
+
+          // First, try to get token from cookie as initial approach
+          const cookieToken = getCookie('firebase_user_token');
           
-          // Check if Firebase is available
-          if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
-              // Get fresh token from Firebase
-              firebase.auth().currentUser.getIdToken(true)
-                  .then(function(token) {
-                      debug('Successfully obtained fresh Firebase token');
-                      sendAjaxRequest(token);
-                  })
-                  .catch(function(error) {
-                      debug('Error getting Firebase token', error);
-                      // Fallback to cookie as last resort
-                      const cookieToken = getCookie('firebase_user_token');
+          if (cookieToken) {
+              debug('Found token in cookie, using it for request');
+              sendAjaxRequest(cookieToken);
+          } else {
+              // Check if Firebase is available
+              if (typeof firebase !== 'undefined') {
+                  debug('Firebase is defined, checking auth module');
+                  
+                  if (firebase.auth) {
+                      debug('Firebase auth module is available');
+                      
+                      // Get current user (might be null)
+                      const currentUser = firebase.auth().currentUser;
+                      debug('Current user status', currentUser ? 'Logged in' : 'Not logged in or not initialized yet');
+                      
+                      if (currentUser) {
+                          // User is logged in, get fresh token
+                          firebase.auth().currentUser.getIdToken(true)
+                              .then(function(token) {
+                                  debug('Successfully obtained fresh Firebase token');
+                                  sendAjaxRequest(token);
+                              })
+                              .catch(function(error) {
+                                  debug('Error getting Firebase token', error);
+                                  // If we fail to get token, check cookie again as fallback
+                                  if (cookieToken) {
+                                      debug('Using token from cookie as fallback');
+                                      sendAjaxRequest(cookieToken);
+                                  } else {
+                                      isLoading = false;
+                                      showError('Authentication error. Please log in again.');
+                                  }
+                              });
+                      } else {
+                          // If user is not logged in, try to wait for auth initialization
+                          debug('User not logged in, waiting for auth state change');
+                          
+                          // Set up a one-time auth state listener
+                          const unsubscribe = firebase.auth().onAuthStateChanged(function(user) {
+                              unsubscribe(); // Unsubscribe immediately to avoid multiple calls
+                              
+                              if (user) {
+                                  debug('Auth state changed - user logged in');
+                                  // Now get token with the logged in user
+                                  user.getIdToken(true)
+                                      .then(function(token) {
+                                          debug('Got token after auth state change');
+                                          sendAjaxRequest(token);
+                                      })
+                                      .catch(function(error) {
+                                          debug('Error getting token after auth state change', error);
+                                          isLoading = false;
+                                          showError('Authentication error. Please try refreshing the page.');
+                                      });
+                              } else {
+                                  debug('Auth state changed - user still not logged in');
+                                  isLoading = false;
+                                  showError('Authentication required. Please log in to view payment history.');
+                              }
+                          });
+                          
+                          // Set a timeout to prevent indefinite waiting
+                          setTimeout(function() {
+                              unsubscribe(); // Clean up listener if it hasn't fired
+                              if (isLoading) {
+                                  // If still loading after timeout, try cookie one more time
+                                  if (cookieToken) {
+                                      debug('Timeout reached, using cookie token as last resort');
+                                      sendAjaxRequest(cookieToken);
+                                  } else {
+                                      isLoading = false;
+                                      showError('Authentication timed out. Please try refreshing the page.');
+                                  }
+                              }
+                          }, 5000); // 5 second timeout
+                      }
+                  } else {
+                      debug('Firebase auth module not available, trying cookie token');
                       if (cookieToken) {
-                          debug('Using token from cookie as fallback');
                           sendAjaxRequest(cookieToken);
                       } else {
                           isLoading = false;
-                          showError('Authentication error. Please log in again.');
+                          showError('Authentication not available. Please try refreshing the page.');
                       }
-                  });
-          } else {
-              // Fallback to cookie if Firebase isn't available
-              const cookieToken = getCookie('firebase_user_token');
-              debug('Firebase not available, using token from cookie', !!cookieToken);
-              if (cookieToken) {
-                  sendAjaxRequest(cookieToken);
+                  }
               } else {
-                  isLoading = false;
-                  showError('Authentication error. Please log in to view payment history.');
+                  debug('Firebase not loaded, trying cookie token');
+                  if (cookieToken) {
+                      sendAjaxRequest(cookieToken);
+                  } else {
+                      isLoading = false;
+                      showError('Authentication not available. Please try refreshing the page.');
+                  }
               }
           }
           
