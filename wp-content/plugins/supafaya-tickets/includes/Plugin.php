@@ -35,6 +35,7 @@ class Plugin {
         add_shortcode('supafaya_user_dropdown', array($this, 'user_dropdown_shortcode'));
         add_shortcode('supafaya_payment_result', array($this, 'payment_result_shortcode'));
         add_shortcode('supafaya_payment_history', array($this, 'payment_history_shortcode'));
+        add_shortcode('supafaya_hamburger_menu', array($this, 'hamburger_menu_shortcode'));
         
         add_action('wp_ajax_supafaya_get_events', array($this->event_controller, 'ajax_get_events'));
         add_action('wp_ajax_nopriv_supafaya_get_events', array($this->event_controller, 'ajax_get_events'));
@@ -213,7 +214,8 @@ class Plugin {
             has_shortcode($post->post_content, 'supafaya_firebase_logout') ||
             has_shortcode($post->post_content, 'supafaya_user_dropdown') ||
             has_shortcode($post->post_content, 'supafaya_payment_result') ||
-            has_shortcode($post->post_content, 'supafaya_payment_history')
+            has_shortcode($post->post_content, 'supafaya_payment_history') ||
+            has_shortcode($post->post_content, 'supafaya_hamburger_menu')
         )) {
             $load_script = true;
         }
@@ -504,6 +506,23 @@ class Plugin {
         }
         
         return '<p>Payment history feature is not available.</p>';
+    }
+    
+    /**
+     * Hamburger menu shortcode
+     */
+    public function hamburger_menu_shortcode($atts) {
+        // Extract shortcode attributes with defaults
+        $atts = shortcode_atts([
+            'menu_location' => 'primary',
+            'menu_class' => 'supafaya-menu-items',
+            'menu_title' => 'Menu'
+        ], $atts);
+        
+        // Load the template
+        ob_start();
+        include SUPAFAYA_PLUGIN_DIR . 'templates/hamburger-menu.php';
+        return ob_get_clean();
     }
     
     /**
