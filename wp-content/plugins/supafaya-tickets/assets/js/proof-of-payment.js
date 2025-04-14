@@ -5,41 +5,19 @@
         const eventPage = $('.supafaya-event-single');
         if (eventPage.length === 0) return;
         
-        // Get current event ID from URL
         const urlParams = new URLSearchParams(window.location.search);
         const currentEventId = urlParams.get('event_id');
         
         if (!currentEventId) {
-            console.error('Event ID not found in URL');
             return;
         }
-        
-        // Enable debug mode
-        if (urlParams.has('debug') || localStorage.getItem('supafaya_debug') === 'true') {
-            window.supafayaDebug = true;
-            localStorage.setItem('supafaya_debug', 'true');
-            console.log('Supafaya Debug Mode Enabled');
-        }
-        
-        // Debug mode
-        const debug = function(message, data) {
-            if (window.supafayaDebug) {
-                console.log('[Proof of Payment Debug] ' + message, data || '');
-            }
-        };
 
-        // Append proof of payment button and dialog to the DOM
         function appendProofOfPaymentUI() {
-            debug('Initializing Proof of Payment UI');
-            
-            // Create the button and append after checkout button
             const checkoutButton = eventPage.find('.checkout-button');
             if (checkoutButton.length === 0) {
-                debug('Checkout button not found, cannot add proof of payment button');
                 return;
             }
             
-            // Create and insert the button
             const popButton = $(`
                 <button class="proof-of-payment-button" disabled>
                     Send Proof of Payment
@@ -51,9 +29,7 @@
             `);
             
             checkoutButton.after(popButton);
-            debug('Proof of payment button added');
             
-            // Create the dialog
             const dialog = $(`
                 <div class="proof-of-payment-dialog" style="display: none;">
                     <div class="dialog-overlay"></div>
@@ -164,32 +140,24 @@
             `);
             
             $('body').append(dialog);
-            debug('Proof of payment dialog added to DOM');
         }
         
-        // Initialize event listeners
         function initEventListeners() {
-            debug('Initializing event listeners');
-            
-            // Open dialog when the button is clicked
             $(document).on('click', '.proof-of-payment-button', function(e) {
                 e.preventDefault();
                 openDialog();
             });
             
-            // Close dialog when close button or overlay is clicked
             $(document).on('click', '.proof-of-payment-dialog .dialog-close, .proof-of-payment-dialog .dialog-overlay', function(e) {
                 e.preventDefault();
                 closeDialog();
             });
             
-            // Close dialog when cancel button is clicked
             $(document).on('click', '.proof-of-payment-dialog .cancel-button', function(e) {
                 e.preventDefault();
                 closeDialog();
             });
             
-            // File upload preview
             $(document).on('change', '#pop-receipt', function() {
                 const fileInput = this;
                 const preview = $(this).siblings('.file-preview');
@@ -199,10 +167,8 @@
                     const reader = new FileReader();
                     
                     reader.onload = function(e) {
-                        // Clear previous preview
                         preview.empty();
                         
-                        // Create preview based on file type
                         if (file.type.match('image.*')) {
                             preview.html(`<img src="${e.target.result}" alt="Receipt preview" class="file-image-preview">`);
                         } else {
@@ -216,110 +182,81 @@
                 }
             });
             
-            // Form submission
             $(document).on('submit', '#proof-of-payment-form', function(e) {
                 e.preventDefault();
                 submitProofOfPayment(this);
             });
             
-            // Listen for cart updates to toggle proof of payment button state
             $(document).on('cart:updated', function() {
-                debug('cart:updated event received');
                 updateProofOfPaymentButton();
             });
             
-            // Additional cart modification listeners
             $(document).on('click', '.add-to-cart, .add-addon-to-cart', function() {
-                debug('Add to cart button clicked, updating button state in 500ms');
                 setTimeout(updateProofOfPaymentButton, 1000);
             });
             
             $(document).on('change', '.ticket-quantity, .addon-quantity', function() {
-                debug('Quantity changed, updating button state in 500ms');
                 setTimeout(updateProofOfPaymentButton, 500);
             });
             
-            // Monitor localStorage changes
             window.addEventListener('storage', function(e) {
                 if (e.key === 'supafaya_carts') {
-                    debug('localStorage cart data changed, updating button state');
                     updateProofOfPaymentButton();
                 }
             });
             
-            // Poll for cart changes periodically
             setInterval(updateProofOfPaymentButton, 2000);
         }
         
-        // Update Proof of Payment button state based on cart contents
         function updateProofOfPaymentButton() {
             const cartData = getCurrentCartData();
             const popButton = $('.proof-of-payment-button');
             
-            debug('Updating proof of payment button state', cartData);
-            
             if (!popButton.length) {
-                debug('Proof of payment button not found in DOM');
                 return;
             }
             
             let hasItems = false;
             
             if (cartData) {
-                // Check tickets
                 if (cartData.tickets && Object.keys(cartData.tickets).length > 0) {
                     hasItems = true;
-                    debug('Cart has tickets:', Object.keys(cartData.tickets).length);
                 }
                 
-                // Check addons
                 if (cartData.addons && Object.keys(cartData.addons).length > 0) {
                     hasItems = true;
-                    debug('Cart has addons:', Object.keys(cartData.addons).length);
                 }
             }
             
-            // Update button state
             if (hasItems) {
-                debug('Enabling proof of payment button');
                 popButton.prop('disabled', false);
             } else {
-                debug('Disabling proof of payment button');
                 popButton.prop('disabled', true);
             }
         }
         
-        // Open the dialog
         function openDialog() {
-            debug('Opening proof of payment dialog');
-            
-            // Get cart data and populate the cart items section
             populateCartItems();
             
             $('.proof-of-payment-dialog').fadeIn(300);
             $('body').addClass('dialog-open');
             
-            // If user is authenticated, pre-fill form with user data
             if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
                 const user = firebase.auth().currentUser;
-                debug('User is authenticated, pre-filling form data', user.email);
                 
                 $('#pop-email').val(user.email);
                 $('#pop-name').val(user.displayName || '');
                 
-                // Pre-fill current date
                 const today = new Date().toISOString().split('T')[0];
                 $('#pop-date').val(today);
             }
             
-            // Pre-fill amount with current cart total
             const cartTotal = $('.total-amount').text().trim().replace(/[^0-9.]/g, '');
             if (cartTotal && !isNaN(parseFloat(cartTotal))) {
                 $('#pop-amount').val(parseFloat(cartTotal));
             }
         }
         
-        // Populate cart items in dialog
         function populateCartItems() {
             const cartData = getCurrentCartData();
             const cartItemsList = $('.cart-items-list');
@@ -336,7 +273,6 @@
             let totalAmount = 0;
             let itemsHtml = '';
             
-            // Add tickets to the list
             if (cartData.tickets && Object.keys(cartData.tickets).length > 0) {
                 Object.keys(cartData.tickets).forEach(ticketId => {
                     const ticket = cartData.tickets[ticketId];
@@ -358,7 +294,6 @@
                 });
             }
             
-            // Add addons to the list
             if (cartData.addons && Object.keys(cartData.addons).length > 0) {
                 Object.keys(cartData.addons).forEach(addonId => {
                     const addon = cartData.addons[addonId];
@@ -389,17 +324,13 @@
             popTotalAmount.text(`฿${totalAmount.toFixed(2)}`);
         }
         
-        // Close the dialog
         function closeDialog() {
-            debug('Closing proof of payment dialog');
             $('.proof-of-payment-dialog').fadeOut(300);
             $('body').removeClass('dialog-open');
             
-            // Reset form status
             $('.form-status').empty().removeClass('error success');
         }
         
-        // Show form status message
         function showStatus(message, type) {
             const statusElement = $('.form-status');
             statusElement.removeClass('error success loading').addClass(type);
@@ -416,42 +347,29 @@
             statusElement.show();
         }
         
-        // Submit proof of payment form
         function submitProofOfPayment(form) {
             const formStatus = $(form).find('.form-status');
             const submitButton = $(form).find('.submit-button');
             const cartData = getCurrentCartData();
             const formData = new FormData(form);
             
-            // Add event ID and cart data to the form
             formData.append('event_id', currentEventId);
             formData.append('cart_data', JSON.stringify(cartData));
             formData.append('action', 'supafaya_proof_of_payment');
             formData.append('nonce', supafayaTickets.nonce);
             
-            // Disable submit button and show loading message
             submitButton.prop('disabled', true).text('Submitting...');
             showStatus('Uploading proof of payment...', 'info');
             
-            debug('Submitting proof of payment form', {
-                formData: '(FormData object)',
-                eventId: currentEventId,
-                cartDataLength: JSON.stringify(cartData).length
-            });
-            
-            // Get fresh token if possible
             if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
                 firebase.auth().currentUser.getIdToken(true)
                     .then(function(token) {
-                        debug('Got fresh Firebase token');
                         sendFormData(token);
                     })
                     .catch(function(error) {
-                        debug('Error getting Firebase token, proceeding without token', error);
                         sendFormData();
                     });
             } else {
-                debug('Firebase not available, proceeding without token');
                 sendFormData();
             }
             
@@ -463,10 +381,7 @@
                     processData: false,
                     contentType: false,
                     success: function(response) {
-                        debug('Proof of payment response', response);
-                        
                         if (response.success) {
-                            // Success
                             const proofUrlDisplay = response.data?.proofUrl 
                                 ? `<p>Your uploaded proof: <a href="${response.data.proofUrl}" target="_blank">View Image</a></p>` 
                                 : '';
@@ -480,22 +395,18 @@
                                 ${proofUrlDisplay}
                             `, 'success');
                             
-                            // Remove submit button
                             $(form).find('.form-actions').remove();
                             
-                            // Clear cart
                             setTimeout(function() {
                                 clearCart();
                             }, 1000);
                             
-                            // Redirect after a delay if there's a redirect URL
                             if (response.data && response.data.redirect_url) {
                                 setTimeout(function() {
                                     window.location.href = response.data.redirect_url;
                                 }, 3000);
                             }
                         } else {
-                            // Error
                             submitButton.prop('disabled', false).text('Submit Proof');
                             showStatus(`
                                 <h3>Error</h3>
@@ -504,12 +415,8 @@
                         }
                     },
                     error: function(xhr, status, error) {
-                        debug('Proof of payment error', { xhr, status, error });
-                        
-                        // Enable submit button again
                         submitButton.prop('disabled', false).text('Submit Proof');
                         
-                        // Show error
                         showStatus(`
                             <h3>Server Error</h3>
                             <p>An error occurred while submitting your payment proof. Please try again later.</p>
@@ -518,7 +425,6 @@
                     }
                 };
                 
-                // Add token to headers if available
                 if (token) {
                     ajaxConfig.beforeSend = function(xhr) {
                         xhr.setRequestHeader('X-Firebase-Token', token);
@@ -529,90 +435,58 @@
             }
         }
         
-        // Get current cart data
         function getCurrentCartData() {
-            // Check if we have a cart in localStorage
             try {
-                debug('Getting cart data from localStorage');
-                
-                // Check if event ID is valid
                 if (!currentEventId) {
-                    debug('Error: Invalid event ID', currentEventId);
                     return null;
                 }
                 
-                // Get all carts from localStorage
                 const allCartsStr = localStorage.getItem('supafaya_carts');
                 if (!allCartsStr) {
-                    debug('No carts found in localStorage');
                     return null;
                 }
                 
-                // Parse carts
                 const allCarts = JSON.parse(allCartsStr);
-                debug('All carts from localStorage', allCarts);
-                
-                // Get current event's cart
                 const currentCart = allCarts[currentEventId];
-                debug('Current event cart', currentCart);
                 
                 return currentCart || null;
             } catch (e) {
-                debug('Error getting cart data', e);
-                console.error('Error getting cart data', e);
                 return null;
             }
         }
         
-        // Clear the cart after successful submission
         function clearCart() {
-            debug('Clearing cart');
             try {
-                // Clear from localStorage
                 const allCarts = JSON.parse(localStorage.getItem('supafaya_carts') || '{}');
                 delete allCarts[currentEventId];
                 localStorage.setItem('supafaya_carts', JSON.stringify(allCarts));
                 
-                // Update the UI to reflect empty cart
                 $('.summary-items').empty();
                 $('.total-amount').text('฿0.00');
                 
-                // Also update the in-memory cart object if it exists
                 if (window.cart) {
                     window.cart.tickets = {};
                     window.cart.addons = {};
                     window.cart.total = 0;
-                    debug('In-memory cart object cleared');
                 }
                 
-                // Explicitly call updateOrderSummary to ensure checkout button is hidden
                 if (typeof window.updateOrderSummary === 'function') {
                     window.updateOrderSummary();
-                    debug('updateOrderSummary called to hide checkout button');
                 } else {
-                    // Fallback: manually hide the checkout button
                     $('.checkout-button').hide().prop('disabled', true);
-                    debug('Manually hiding checkout button as fallback');
                 }
                 
-                // Trigger cart:updated event to ensure all components update properly
                 $(document).trigger('cart:updated');
-                
-                debug('Cart cleared and cart:updated event triggered');
             } catch (e) {
-                debug('Error clearing cart', e);
             }
         }
         
-        // Initialize the module
         function init() {
-            debug('Initializing proof of payment module');
             appendProofOfPaymentUI();
             initEventListeners();
-            updateProofOfPaymentButton(); // Set initial button state
+            updateProofOfPaymentButton();
         }
         
-        // Run initialization
         init();
     }
     

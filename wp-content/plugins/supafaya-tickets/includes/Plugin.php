@@ -15,25 +15,17 @@ class Plugin {
     private $firebase_auth;
     
     public function init() {
-        // Initialize controllers
         $this->event_controller = new EventController();
         $this->ticket_controller = new TicketController();
         $this->payment_proof_controller = new PaymentProofController();
         $this->analytics_controller = new AnalyticsController();
         
-        // Initialize Firebase Auth
         $this->firebase_auth = new FirebaseAuth();
         
-        // Register assets
         add_action('wp_enqueue_scripts', [$this, 'register_assets']);
-        
-        // Add admin menu
         add_action('admin_menu', [$this, 'add_admin_menu']);
-        
-        // Add settings
         add_action('admin_init', [$this, 'register_settings']);
         
-        // Register shortcodes
         add_shortcode('supafaya_events', array($this, 'events_shortcode'));
         add_shortcode('supafaya_event', array($this, 'event_shortcode'));
         add_shortcode('supafaya_login_form', array($this, 'login_form_shortcode'));
@@ -41,7 +33,6 @@ class Plugin {
         add_shortcode('supafaya_payment_result', array($this, 'payment_result_shortcode'));
         add_shortcode('supafaya_payment_history', array($this, 'payment_history_shortcode'));
         
-        // Register AJAX actions
         add_action('wp_ajax_supafaya_get_events', array($this->event_controller, 'ajax_get_events'));
         add_action('wp_ajax_nopriv_supafaya_get_events', array($this->event_controller, 'ajax_get_events'));
         
@@ -54,13 +45,11 @@ class Plugin {
         add_action('wp_ajax_supafaya_get_user_items', array($this->event_controller, 'ajax_get_user_items'));
         add_action('wp_ajax_nopriv_supafaya_get_user_items', array($this->event_controller, 'ajax_get_user_items'));
         
-        // Add Proof of Payment AJAX action
         add_action('wp_ajax_supafaya_proof_of_payment', array($this->payment_proof_controller, 'ajax_submit_proof_of_payment'));
         add_action('wp_ajax_nopriv_supafaya_proof_of_payment', array($this->payment_proof_controller, 'ajax_submit_proof_of_payment'));
     }
     
     public function register_assets() {
-        // Always enqueue the stylesheet on all pages
         wp_enqueue_style(
             'supafaya-tickets-style',
             SUPAFAYA_PLUGIN_URL . 'assets/css/supafaya-tickets.css',
@@ -68,7 +57,6 @@ class Plugin {
             SUPAFAYA_VERSION
         );
         
-        // Register Proof of Payment CSS
         wp_register_style(
             'supafaya-proof-of-payment-style',
             SUPAFAYA_PLUGIN_URL . 'assets/css/proof-of-payment.css',
@@ -76,7 +64,6 @@ class Plugin {
             SUPAFAYA_VERSION
         );
         
-        // Register the script
         wp_register_script(
             'supafaya-tickets-script',
             SUPAFAYA_PLUGIN_URL . 'assets/js/supafaya-tickets.js',
@@ -85,7 +72,6 @@ class Plugin {
             true
         );
         
-        // Register analytics script
         wp_register_script(
             'supafaya-analytics',
             SUPAFAYA_PLUGIN_URL . 'assets/js/supafaya-analytics.js',
@@ -94,7 +80,6 @@ class Plugin {
             true
         );
         
-        // Register the purchased items script
         wp_register_script(
             'supafaya-purchased-items',
             SUPAFAYA_PLUGIN_URL . 'assets/js/purchased-items.js',
@@ -103,7 +88,6 @@ class Plugin {
             true
         );
         
-        // Register Proof of Payment script
         wp_register_script(
             'supafaya-proof-of-payment',
             SUPAFAYA_PLUGIN_URL . 'assets/js/proof-of-payment.js',
@@ -112,10 +96,8 @@ class Plugin {
             true
         );
         
-        // Get login URL - first check if it's configured in settings
         $login_url = get_option('supafaya_login_page_url', '');
         
-        // If not set in settings, look for a page with our login shortcode
         if (empty($login_url)) {
             $login_pages = get_posts([
                 'post_type' => 'page',
@@ -126,18 +108,14 @@ class Plugin {
             if (!empty($login_pages)) {
                 $login_url = get_permalink($login_pages[0]->ID);
             } else {
-                // Fallback to home page
                 $login_url = home_url();
             }
         }
         
-        // Get profile URL
         $profile_url = get_option('supafaya_profile_page_url', home_url());
         
-        // Get payment result URL
         $payment_result_url = get_option('supafaya_payment_result_page_url', '');
         if (empty($payment_result_url)) {
-            // Try to find a page with our payment result shortcode
             $result_pages = get_posts([
                 'post_type' => 'page',
                 'posts_per_page' => 1,
@@ -147,15 +125,12 @@ class Plugin {
             if (!empty($result_pages)) {
                 $payment_result_url = get_permalink($result_pages[0]->ID);
             } else {
-                // Fallback to home page
                 $payment_result_url = home_url();
             }
         }
         
-        // Get the default organization ID from settings
         $default_organization_id = get_option('supafaya_organization_id', '');
         
-        // Get the REST API URL
         $rest_url = rest_url('supafaya/v1/');
         
         wp_localize_script('supafaya-tickets-script', 'supafayaTickets', [
@@ -169,25 +144,18 @@ class Plugin {
             'defaultOrganizationId' => $default_organization_id
         ]);
         
-        // Enqueue the script whenever the shortcode is used
         add_action('wp_footer', [$this, 'maybe_enqueue_script']);
     }
     
-    /**
-     * Enqueue JavaScript if our shortcodes are used on the page
-     */
     public function maybe_enqueue_script() {
         global $post;
         
-        // Check if we need to load our assets
         $load_script = false;
         
-        // If we have event_id in the URL
         if (isset($_GET['event_id'])) {
             $load_script = true;
         }
         
-        // Check if the content has any of our shortcodes
         if ($post && (
             has_shortcode($post->post_content, 'supafaya_events') || 
             has_shortcode($post->post_content, 'supafaya_event') || 
@@ -203,16 +171,12 @@ class Plugin {
         }
         
         if ($load_script) {
-            // Force load Firebase scripts for authenticated features
             if (method_exists($this->firebase_auth, 'force_load_firebase_scripts')) {
-                // Force load Firebase scripts
                 $this->firebase_auth->force_load_firebase_scripts();
             }
             
-            // Make sure supafaya-tickets.js depends on firebase
             $depends = ['jquery'];
             
-            // Add supafaya-firebase as a dependency if it's been enqueued
             if (wp_script_is('supafaya-firebase', 'registered')) {
                 $depends[] = 'supafaya-firebase';
             }
@@ -225,12 +189,9 @@ class Plugin {
                 true
             );
             
-            // Enqueue the analytics script
             wp_enqueue_script('supafaya-analytics');
             
-            // Enqueue scripts and styles for event pages
             if (isset($_GET['event_id'])) {
-                // Enqueue the purchased items script
                 wp_enqueue_script(
                     'supafaya-purchased-items',
                     SUPAFAYA_PLUGIN_URL . 'assets/js/purchased-items.js',
@@ -239,7 +200,6 @@ class Plugin {
                     true
                 );
                 
-                // Enqueue the proof of payment script and styles
                 wp_enqueue_script(
                     'supafaya-proof-of-payment',
                     SUPAFAYA_PLUGIN_URL . 'assets/js/proof-of-payment.js',
@@ -248,23 +208,7 @@ class Plugin {
                     true
                 );
                 
-                wp_enqueue_style(
-                    'supafaya-proof-of-payment-style',
-                    SUPAFAYA_PLUGIN_URL . 'assets/css/proof-of-payment.css',
-                    ['supafaya-tickets-style'],
-                    SUPAFAYA_VERSION
-                );
-            }
-            
-            // Enqueue the payment history script when the shortcode is used
-            if ($post && has_shortcode($post->post_content, 'supafaya_payment_history')) {
-                wp_enqueue_script(
-                    'supafaya-payment-history',
-                    SUPAFAYA_PLUGIN_URL . 'assets/js/payment-history.js',
-                    ['jquery', 'supafaya-tickets-script'],
-                    SUPAFAYA_VERSION,
-                    true
-                );
+                wp_enqueue_style('supafaya-proof-of-payment-style');
             }
         }
     }

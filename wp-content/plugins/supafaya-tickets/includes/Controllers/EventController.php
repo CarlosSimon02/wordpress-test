@@ -9,26 +9,21 @@ class EventController
   protected $event_service;
   protected $api_client;
 
-
   public function __construct()
   {
     $this->api_client = new ApiClient();
     $this->event_service = new EventService($this->api_client);
 
-    // Apply API token to all requests
     add_action('init', [$this, 'setup_api_token']);
-
-    // Register shortcodes - these might be registered again in Plugin.php, which is fine
+    
     add_shortcode('supafaya_events', [$this, 'events_shortcode']);
     add_shortcode('supafaya_event', [$this, 'event_shortcode']);
 
-    // Register AJAX handlers
     add_action('wp_ajax_supafaya_load_events', [$this, 'ajax_load_events']);
     add_action('wp_ajax_nopriv_supafaya_load_events', [$this, 'ajax_load_events']);
     add_action('wp_ajax_supafaya_get_user_items', [$this, 'ajax_get_user_items']);
     add_action('wp_ajax_nopriv_supafaya_get_user_items', [$this, 'ajax_get_user_items']);
 
-    // Register REST API endpoints
     add_action('rest_api_init', [$this, 'register_rest_routes']);
   }
 
@@ -37,10 +32,6 @@ class EventController
     return $this->event_service;
   }
 
-
-  /**
-   * Set up API token from filter
-   */
   public function setup_api_token()
   {
     $token = apply_filters('supafaya_api_token', null);
@@ -49,19 +40,15 @@ class EventController
     }
   }
 
-  /**
-   * Shortcode for displaying events
-   */
   public function events_shortcode($atts)
   {
-    // Get default organization ID from settings
     $default_org_id = get_option('supafaya_organization_id', '');
     
     $atts = shortcode_atts([
       'organization_id' => $default_org_id,
       'limit' => 10,
       'filter' => 'upcoming',
-      'template' => 'grid' // grid, list, calendar
+      'template' => 'grid'
     ], $atts);
 
     if (empty($atts['organization_id'])) {
@@ -85,9 +72,6 @@ class EventController
     return ob_get_clean();
   }
 
-  /**
-   * Shortcode for displaying a single event
-   */
   public function event_shortcode($atts)
   {
     $atts = shortcode_atts([
@@ -95,7 +79,6 @@ class EventController
       'template' => 'default'
     ], $atts);
 
-    // If event_id is not provided in shortcode, check URL
     if (empty($atts['event_id']) && isset($_GET['event_id'])) {
       $atts['event_id'] = sanitize_text_field($_GET['event_id']);
     }
@@ -122,7 +105,6 @@ class EventController
               </div>';
     }
 
-    // Fetch event addons
     $addons_response = $this->event_service->getEventAddons($atts['event_id']);
     if ($addons_response['success']) {
       $event['addons'] = $addons_response['data']['data'] ?? [];
@@ -133,12 +115,8 @@ class EventController
     return ob_get_clean();
   }
 
-  /**
-   * AJAX handler for loading events
-   */
   public function ajax_load_events()
   {
-    // Get default organization ID from settings
     $default_org_id = get_option('supafaya_organization_id', '');
     
     $organization_id = sanitize_text_field($_POST['organization_id'] ?? $default_org_id);
@@ -169,9 +147,6 @@ class EventController
     wp_send_json($response);
   }
 
-  /**
-   * Register WordPress REST API routes
-   */
   public function register_rest_routes()
   {
     register_rest_route('supafaya/v1', '/events', [
@@ -187,12 +162,8 @@ class EventController
     ]);
   }
 
-  /**
-   * REST API handler for getting events
-   */
   public function rest_get_events($request)
   {
-    // Get default organization ID from settings
     $default_org_id = get_option('supafaya_organization_id', '');
     
     $organization_id = $request->get_param('organization_id') ?? $default_org_id;
@@ -212,9 +183,6 @@ class EventController
     return rest_ensure_response($response);
   }
 
-  /**
-   * REST API handler for getting a single event
-   */
   public function rest_get_event($request)
   {
     $event_id = $request->get_param('id');
@@ -228,12 +196,8 @@ class EventController
     return rest_ensure_response($response['data']);
   }
 
-  /**
-   * AJAX handler for getting user's purchased items for an event
-   */
   public function ajax_get_user_items()
   {
-    // Verify nonce
     if (!isset($_GET['nonce']) || !wp_verify_nonce($_GET['nonce'], 'supafaya-tickets-nonce')) {
       wp_send_json([
         'success' => false,
@@ -242,7 +206,6 @@ class EventController
       return;
     }
 
-    // Get event ID
     $event_id = sanitize_text_field($_GET['event_id'] ?? '');
 
     if (empty($event_id)) {
@@ -253,7 +216,6 @@ class EventController
       return;
     }
 
-    // Get Firebase token from request
     $headers = function_exists('getallheaders') ? getallheaders() : [];
     $firebase_token = isset($headers['X-Firebase-Token']) ? $headers['X-Firebase-Token'] : null;
 
@@ -265,10 +227,8 @@ class EventController
       return;
     }
 
-    // Set the Firebase token for API requests
     $this->api_client->setToken($firebase_token);
 
-    // Make API request to get user items
     $api_url = '/events/' . $event_id . '/user-items';
     
     $response = $this->api_client->get($api_url);
@@ -281,15 +241,12 @@ class EventController
       return;
     }
 
-    // Get tickets and addons from the response
     $responseData = $response['data']['data'] ?? [];
     $tickets = $responseData['tickets'] ?? [];
     $addons = $responseData['addons'] ?? [];
 
-    // Format tickets for display
     $formatted_items = [];
 
-    // Process tickets
     foreach ($tickets as $ticket) {
       $formatted_items[] = [
         'id' => $ticket['id'] ?? '',
@@ -312,7 +269,6 @@ class EventController
       ];
     }
 
-    // Process standalone addons
     foreach ($addons as $addon) {
       $formatted_items[] = [
         'id' => $addon['id'] ?? $addon['addonId'] ?? '',

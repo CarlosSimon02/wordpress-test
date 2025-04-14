@@ -6,18 +6,15 @@
  * Author: Your Name
  */
 
-// Prevent direct access
 if (!defined('ABSPATH')) {
     exit;
 }
 
-// Define constants
 define('SUPAFAYA_VERSION', '1.0.0');
 define('SUPAFAYA_API_URL', 'https://supafaya-ticketing-api-lallk7rbba-de.a.run.app/api/v1');
 define('SUPAFAYA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SUPAFAYA_PLUGIN_URL', plugin_dir_url(__FILE__));
 
-// Autoload classes
 spl_autoload_register(function ($class) {
     $prefix = 'SupafayaTickets\\';
     $base_dir = SUPAFAYA_PLUGIN_DIR . 'includes/';
@@ -35,7 +32,6 @@ spl_autoload_register(function ($class) {
     }
 });
 
-// Initialize plugin
 require_once SUPAFAYA_PLUGIN_DIR . 'includes/Plugin.php';
 $supafaya_tickets = new SupafayaTickets\Plugin();
 $supafaya_tickets->init();
