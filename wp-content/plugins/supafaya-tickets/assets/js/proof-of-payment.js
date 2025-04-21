@@ -1,6 +1,9 @@
 (function($) {
     'use strict';
     
+    // Create a global object to expose functions
+    window.supafayaProofOfPayment = {};
+    
     function initProofOfPayment() {
         const eventPage = $('.supafaya-event-single');
         if (eventPage.length === 0) return;
@@ -13,29 +16,17 @@
         }
 
         function appendProofOfPaymentUI() {
-            const checkoutButton = eventPage.find('.checkout-button');
+            const checkoutButton = eventPage.find('.choose-payment-button, .checkout-button');
             if (checkoutButton.length === 0) {
                 return;
             }
-            
-            const popButton = $(`
-                <button class="proof-of-payment-button" disabled>
-                    Send Proof of Payment
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 17l6-6-6-6"></path>
-                        <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"></path>
-                    </svg>
-                </button>
-            `);
-            
-            checkoutButton.after(popButton);
             
             const dialog = $(`
                 <div class="proof-of-payment-dialog" style="display: none;">
                     <div class="dialog-overlay"></div>
                     <div class="dialog-content">
                         <div class="dialog-header">
-                            <h2>Send Proof of Payment</h2>
+                            <h2>Bank Transfer</h2>
                             <button class="dialog-close">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -143,10 +134,11 @@
         }
         
         function initEventListeners() {
-            $(document).on('click', '.proof-of-payment-button', function(e) {
-                e.preventDefault();
-                openDialog();
-            });
+            // We no longer need this event since we're using the payment method dialog
+            // $(document).on('click', '.proof-of-payment-button', function(e) {
+            //     e.preventDefault();
+            //     openDialog();
+            // });
             
             $(document).on('click', '.proof-of-payment-dialog .dialog-close, .proof-of-payment-dialog .dialog-overlay', function(e) {
                 e.preventDefault();
@@ -209,30 +201,7 @@
         }
         
         function updateProofOfPaymentButton() {
-            const cartData = getCurrentCartData();
-            const popButton = $('.proof-of-payment-button');
-            
-            if (!popButton.length) {
-                return;
-            }
-            
-            let hasItems = false;
-            
-            if (cartData) {
-                if (cartData.tickets && Object.keys(cartData.tickets).length > 0) {
-                    hasItems = true;
-                }
-                
-                if (cartData.addons && Object.keys(cartData.addons).length > 0) {
-                    hasItems = true;
-                }
-            }
-            
-            if (hasItems) {
-                popButton.prop('disabled', false);
-            } else {
-                popButton.prop('disabled', true);
-            }
+            getCurrentCartData();
         }
         
         function openDialog() {
@@ -251,10 +220,39 @@
                 $('#pop-date').val(today);
             }
             
-            const cartTotal = $('.total-amount').text().trim().replace(/[^0-9.]/g, '');
-            if (cartTotal && !isNaN(parseFloat(cartTotal))) {
-                $('#pop-amount').val(parseFloat(cartTotal));
+            // Get cart total from the DOM or from the cart data
+            const cartTotal = getCartTotal();
+            if (cartTotal > 0) {
+                $('#pop-amount').val(cartTotal);
             }
+        }
+        
+        function getCartTotal() {
+            // Try to get total from DOM first
+            const domTotal = $('.total-amount').text().trim().replace(/[^0-9.]/g, '');
+            if (domTotal && !isNaN(parseFloat(domTotal))) {
+                return parseFloat(domTotal);
+            }
+            
+            // If DOM total is not available, calculate from cart data
+            const cartData = getCurrentCartData();
+            if (!cartData) return 0;
+            
+            let total = 0;
+            
+            if (cartData.tickets) {
+                Object.values(cartData.tickets).forEach(ticket => {
+                    total += (ticket.price * ticket.quantity);
+                });
+            }
+            
+            if (cartData.addons) {
+                Object.values(cartData.addons).forEach(addon => {
+                    total += (addon.price * addon.quantity);
+                });
+            }
+            
+            return total;
         }
         
         function populateCartItems() {
@@ -264,7 +262,12 @@
             
             cartItemsList.empty();
             
-            if (!cartData) {
+            // Debug log to check cartData
+            console.log('Cart data for proof of payment:', cartData);
+            
+            if (!cartData || 
+                ((!cartData.tickets || Object.keys(cartData.tickets).length === 0) && 
+                (!cartData.addons || Object.keys(cartData.addons).length === 0))) {
                 cartItemsList.html('<p class="empty-cart">Your cart is empty</p>');
                 popTotalAmount.text('฿0.00');
                 return;
@@ -441,6 +444,15 @@
                     return null;
                 }
                 
+                // Try to get cart from window.cart first (for active session)
+                if (window.cart) {
+                    if ((window.cart.tickets && Object.keys(window.cart.tickets).length > 0) || 
+                        (window.cart.addons && Object.keys(window.cart.addons).length > 0)) {
+                        return window.cart;
+                    }
+                }
+                
+                // Fallback to localStorage
                 const allCartsStr = localStorage.getItem('supafaya_carts');
                 if (!allCartsStr) {
                     return null;
@@ -451,6 +463,7 @@
                 
                 return currentCart || null;
             } catch (e) {
+                console.error('Error getting cart data:', e);
                 return null;
             }
         }
@@ -484,7 +497,11 @@
         function init() {
             appendProofOfPaymentUI();
             initEventListeners();
-            updateProofOfPaymentButton();
+            
+            // Expose functions to the global scope
+            window.supafayaProofOfPayment.openDialog = openDialog;
+            window.supafayaProofOfPayment.populateCartItems = populateCartItems;
+            window.supafayaProofOfPayment.closeDialog = closeDialog;
         }
         
         init();

@@ -354,155 +354,6 @@
             $(document).trigger('cart:updated');
         }
 
-        $(document).on('click', '.checkout-button', function() {
-            if (!checkFirebaseAuth()) {
-                document.cookie = 'supafaya_checkout_redirect=' + window.location.href + '; path=/; max-age=3600';
-                
-                window.location.href = supafayaTickets.loginUrl;
-                return;
-            }
-            
-            const tickets = [];
-            const addons = [];
-
-            for (const id in cart.tickets) {
-                tickets.push({
-                    ticket_id: id,
-                    quantity: cart.tickets[id].quantity,
-                    name: cart.tickets[id].name,
-                    price: cart.tickets[id].price,
-                    description: cart.tickets[id].description || '',
-                    type: cart.tickets[id].type || 'regular'
-                });
-            }
-
-            for (const id in cart.addons) {
-                addons.push({
-                    addon_id: id,
-                    quantity: cart.addons[id].quantity,
-                    name: cart.addons[id].name,
-                    price: cart.addons[id].price,
-                    ticket_id: cart.addons[id].ticketId || ''
-                });
-            }
-
-            const phoneNumber = $('#customer_phone').val() || '';
-            
-            const currentUser = firebase.auth().currentUser;
-            let userEmail = '';
-            let userName = '';
-            
-            if (currentUser) {
-                userEmail = currentUser.email || '';
-                userName = currentUser.displayName || '';
-            }
-
-            if (!currentEventId) {
-                alert('Event ID not found in URL');
-                return;
-            }
-
-            if (!userEmail) {
-                alert('Cannot proceed without user email. Please ensure you are properly logged in.');
-                return;
-            }
-
-            $(this).prop('disabled', true).text('Processing...');
-
-            const firebaseToken = getFirebaseToken();
-            
-            $.ajax({
-                url: supafayaTickets.ajaxUrl,
-                type: 'POST',
-                headers: {
-                    'X-Firebase-Token': firebaseToken
-                },
-                data: {
-                    action: 'supafaya_purchase_ticket',
-                    nonce: supafayaTickets.nonce,
-                    event_id: currentEventId,
-                    tickets: tickets,
-                    addons: addons,
-                    phone: phoneNumber,
-                    email: userEmail,
-                    name: userName,
-                    firebase_token: firebaseToken,
-                    payment_redirect_urls: {
-                        success: supafayaTickets.paymentResultUrl ? 
-                            (window.location.protocol + '//' + window.location.host + supafayaTickets.paymentResultUrl + 
-                            (supafayaTickets.paymentResultUrl.includes('?') ? '&' : '?') + 
-                            'status=success&event_id=' + currentEventId) : '',
-                        failed: supafayaTickets.paymentResultUrl ? 
-                            (window.location.protocol + '//' + window.location.host + supafayaTickets.paymentResultUrl + 
-                            (supafayaTickets.paymentResultUrl.includes('?') ? '&' : '?') + 
-                            'status=failed&event_id=' + currentEventId) : '',
-                        cancel: window.location.href
-                    }
-                },
-                success: function(response) {
-                    $('.checkout-button').prop('disabled', false).text('Proceed to Checkout');
-
-                    if (response.success) {
-                        allCarts[currentEventId] = {
-                            tickets: {},
-                            addons: {},
-                            total: 0
-                        };
-                        saveCartsToStorage();
-                        
-                        if (response.data && response.data.checkoutUrl) {
-                            sessionStorage.setItem('supafaya_checkout_event_id', currentEventId);
-                            if (response.data.id) {
-                                sessionStorage.setItem('supafaya_transaction_id', response.data.id);
-                            }
-                            
-                            window.location.href = response.data.checkoutUrl;
-                            return;
-                        }
-                        
-                        if (supafayaTickets.paymentResultUrl) {
-                            const successUrl = supafayaTickets.paymentResultUrl + (supafayaTickets.paymentResultUrl.includes('?') ? '&' : '?') + 
-                                'status=success&event_id=' + currentEventId + 
-                                (response.data.id ? '&transaction_id=' + response.data.id : '');
-                            window.location.href = successUrl;
-                            return;
-                        }
-                        
-                        $('.event-right-column').html(`
-                            <div class="checkout-success">
-                                <h3>Thank you for your purchase!</h3>
-                                <p>${response.message || 'Your tickets have been booked successfully.'}</p>
-                                <p>Reference: ${response.data?.id || ''}</p>
-                                <p><a href="/my-tickets" class="view-tickets-button">View My Tickets</a></p>
-                            </div>
-                        `);
-                    } else {
-                        if (supafayaTickets.paymentResultUrl) {
-                            const failureUrl = supafayaTickets.paymentResultUrl + (supafayaTickets.paymentResultUrl.includes('?') ? '&' : '?') + 
-                                'status=failed&event_id=' + currentEventId + 
-                                (response.data && response.data.id ? '&transaction_id=' + response.data.id : '');
-                            window.location.href = failureUrl;
-                            return;
-                        }
-                        
-                        alert('Error: ' + (response.message || 'An error occurred'));
-                    }
-                },
-                error: function(xhr, status, error) {
-                    $('.checkout-button').prop('disabled', false).text('Proceed to Checkout');
-                    
-                    if (supafayaTickets.paymentResultUrl) {
-                        const failureUrl = supafayaTickets.paymentResultUrl + (supafayaTickets.paymentResultUrl.includes('?') ? '&' : '?') + 
-                            'status=failed&event_id=' + currentEventId;
-                        window.location.href = failureUrl;
-                        return;
-                    }
-                    
-                    alert('A network error occurred. Please try again.');
-                }
-            });
-        });
-
         function updateOrderSummary() {
             const summaryContainer = $('.summary-items');
             let html = '';
@@ -558,13 +409,217 @@
             }
             
             if (totalItems > 0) {
-                $('.checkout-button').show().prop('disabled', false);
+                if (total === 0) {
+                    $('.get-order-button').show().prop('disabled', false);
+                    $('.choose-payment-button').hide();
+                } else {
+                    $('.choose-payment-button').show().prop('disabled', false);
+                    $('.get-order-button').hide();
+                }
             } else {
-                $('.checkout-button').hide().prop('disabled', true);
+                $('.get-order-button').hide().prop('disabled', true);
+                $('.choose-payment-button').hide().prop('disabled', true);
             }
         }
 
         window.updateOrderSummary = updateOrderSummary;
+
+        $(document).on('click', '.get-order-button', function() {
+            if (!checkFirebaseAuth()) {
+                document.cookie = 'supafaya_checkout_redirect=' + window.location.href + '; path=/; max-age=3600';
+                window.location.href = supafayaTickets.loginUrl;
+                return;
+            }
+            
+            processCheckout();
+        });
+        
+        $(document).on('click', '.choose-payment-button', function() {
+            if (!checkFirebaseAuth()) {
+                document.cookie = 'supafaya_checkout_redirect=' + window.location.href + '; path=/; max-age=3600';
+                window.location.href = supafayaTickets.loginUrl;
+                return;
+            }
+            
+            $('.payment-method-dialog').fadeIn(300);
+        });
+        
+        $(document).on('click', '.payment-method-dialog .dialog-close, .payment-method-dialog .dialog-overlay', function(e) {
+            if (e.target === this) {
+                $('.payment-method-dialog').fadeOut(300);
+            }
+        });
+        
+        $(document).on('click', '.payment-method-option.card-payment', function() {
+            $('.payment-method-dialog').fadeOut(300);
+            processCheckout();
+        });
+        
+        $(document).on('click', '.payment-method-option.proof-payment', function() {
+            $('.payment-method-dialog').fadeOut(300);
+            
+            if ($('.proof-of-payment-dialog').length) {
+                if (typeof window.supafayaProofOfPayment === 'object' && typeof window.supafayaProofOfPayment.openDialog === 'function') {
+                    window.supafayaProofOfPayment.openDialog();
+                } else {
+                    $('.proof-of-payment-dialog').fadeIn(300);
+                }
+            } else {
+                alert('Proof of payment option is not available at this time.');
+            }
+        });
+        
+        function processCheckout() {
+            const tickets = [];
+            const addons = [];
+
+            for (const id in cart.tickets) {
+                tickets.push({
+                    ticket_id: id,
+                    quantity: cart.tickets[id].quantity,
+                    name: cart.tickets[id].name,
+                    price: cart.tickets[id].price,
+                    description: cart.tickets[id].description || '',
+                    type: cart.tickets[id].type || 'regular'
+                });
+            }
+
+            for (const id in cart.addons) {
+                addons.push({
+                    addon_id: id,
+                    quantity: cart.addons[id].quantity,
+                    name: cart.addons[id].name,
+                    price: cart.addons[id].price,
+                    ticket_id: cart.addons[id].ticketId || ''
+                });
+            }
+
+            const phoneNumber = $('#customer_phone').val() || '';
+            
+            const currentUser = firebase.auth().currentUser;
+            let userEmail = '';
+            let userName = '';
+            
+            if (currentUser) {
+                userEmail = currentUser.email || '';
+                userName = currentUser.displayName || '';
+            }
+
+            if (!currentEventId) {
+                alert('Event ID not found in URL');
+                return;
+            }
+
+            if (!userEmail) {
+                alert('Cannot proceed without user email. Please ensure you are properly logged in.');
+                return;
+            }
+
+            $('.get-order-button, .choose-payment-button').prop('disabled', true);
+            $('.get-order-button').text('Processing...');
+            $('.choose-payment-button').text('Processing...');
+
+            getFirebaseToken()
+                .then(firebaseToken => {
+                    $.ajax({
+                        url: supafayaTickets.ajaxUrl,
+                        type: 'POST',
+                        headers: {
+                            'X-Firebase-Token': firebaseToken
+                        },
+                        data: {
+                            action: 'supafaya_purchase_ticket',
+                            nonce: supafayaTickets.nonce,
+                            event_id: currentEventId,
+                            tickets: tickets,
+                            addons: addons,
+                            phone: phoneNumber,
+                            email: userEmail,
+                            name: userName,
+                            firebase_token: firebaseToken,
+                            payment_redirect_urls: {
+                                success: supafayaTickets.paymentResultUrl ? 
+                                    (window.location.protocol + '//' + window.location.host + supafayaTickets.paymentResultUrl + 
+                                    (supafayaTickets.paymentResultUrl.includes('?') ? '&' : '?') + 
+                                    'status=success&event_id=' + currentEventId) : '',
+                                failed: supafayaTickets.paymentResultUrl ? 
+                                    (window.location.protocol + '//' + window.location.host + supafayaTickets.paymentResultUrl + 
+                                    (supafayaTickets.paymentResultUrl.includes('?') ? '&' : '?') + 
+                                    'status=failed&event_id=' + currentEventId) : '',
+                                cancel: window.location.href
+                            }
+                        },
+                        success: function(response) {
+                            $('.get-order-button').prop('disabled', false).text('Get Order/s');
+                            $('.choose-payment-button').prop('disabled', false).text('Choose Payment Method');
+
+                            if (response.success) {
+                                allCarts[currentEventId] = {
+                                    tickets: {},
+                                    addons: {},
+                                    total: 0
+                                };
+                                saveCartsToStorage();
+                                
+                                if (response.data && response.data.checkoutUrl) {
+                                    sessionStorage.setItem('supafaya_checkout_event_id', currentEventId);
+                                    if (response.data.id) {
+                                        sessionStorage.setItem('supafaya_transaction_id', response.data.id);
+                                    }
+                                    
+                                    window.location.href = response.data.checkoutUrl;
+                                    return;
+                                }
+                                
+                                if (supafayaTickets.paymentResultUrl) {
+                                    const successUrl = supafayaTickets.paymentResultUrl + (supafayaTickets.paymentResultUrl.includes('?') ? '&' : '?') + 
+                                        'status=success&event_id=' + currentEventId + 
+                                        (response.data.id ? '&transaction_id=' + response.data.id : '');
+                                    window.location.href = successUrl;
+                                    return;
+                                }
+                                
+                                $('.event-right-column').html(`
+                                    <div class="checkout-success">
+                                        <h3>Thank you for your purchase!</h3>
+                                        <p>${response.message || 'Your tickets have been booked successfully.'}</p>
+                                        <p>Reference: ${response.data?.id || ''}</p>
+                                        <p><a href="/my-tickets" class="view-tickets-button">View My Tickets</a></p>
+                                    </div>
+                                `);
+                            } else {
+                                if (supafayaTickets.paymentResultUrl) {
+                                    const failureUrl = supafayaTickets.paymentResultUrl + (supafayaTickets.paymentResultUrl.includes('?') ? '&' : '?') + 
+                                        'status=failed&event_id=' + currentEventId + 
+                                        (response.data && response.data.id ? '&transaction_id=' + response.data.id : '');
+                                    window.location.href = failureUrl;
+                                    return;
+                                }
+                                
+                                alert('Error: ' + (response.message || 'An error occurred'));
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            $('.get-order-button').prop('disabled', false).text('Get Order/s');
+                            $('.choose-payment-button').prop('disabled', false).text('Choose Payment Method');
+                            
+                            if (supafayaTickets.paymentResultUrl) {
+                                const failureUrl = supafayaTickets.paymentResultUrl + (supafayaTickets.paymentResultUrl.includes('?') ? '&' : '?') + 
+                                    'status=failed&event_id=' + currentEventId;
+                                window.location.href = failureUrl;
+                                return;
+                            }
+                            
+                            alert('A network error occurred. Please try again.');
+                        }
+                    });
+                })
+                .catch(error => {
+                    $('.get-order-button').prop('disabled', false).text('Get Order/s');
+                    $('.choose-payment-button').prop('disabled', false).text('Choose Payment Method');
+                    alert('Authentication error. Please try logging in again.');
+                });
+        }
 
         $(document).on('click', '.remove-item', function() {
             const item = $(this).closest('.summary-item');

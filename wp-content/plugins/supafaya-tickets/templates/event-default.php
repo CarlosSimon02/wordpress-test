@@ -265,11 +265,58 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <span>Total:</span>
                                 <span class="total-amount">฿0.00</span>
                             </div>
-                            <button class="checkout-button">Proceed to Checkout</button>
+                            <button class="get-order-button" style="display: none;">Get Order/s</button>
+                            <button class="choose-payment-button" style="display: none;">Choose Payment Method</button>
                         </div>
                     </div>
                 </div>
             <?php endif; ?>
+
+            <!-- Payment Method Dialog -->
+            <div class="payment-method-dialog" style="display: none;">
+                <div class="dialog-overlay"></div>
+                <div class="dialog-content">
+                    <div class="dialog-header">
+                        <h2>Choose Payment Method</h2>
+                        <button class="dialog-close">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="dialog-body">
+                        <div class="payment-methods">
+                            <button class="payment-method-option card-payment">
+                                <div class="payment-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                                        <line x1="1" y1="10" x2="23" y2="10"></line>
+                                    </svg>
+                                </div>
+                                <div class="payment-info">
+                                    <h3>Card Payment</h3>
+                                    <p>Pay securely with credit or debit card</p>
+                                </div>
+                            </button>
+                            <button class="payment-method-option proof-payment">
+                                <div class="payment-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                        <polyline points="21 15 16 10 5 21"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="payment-info">
+                                    <h3>Bank Transfer</h3>
+                                    <p>Upload your payment confirmation</p>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <?php if (!empty($event['details'])): ?>
                 <div class="event-details">
@@ -847,6 +894,165 @@ document.addEventListener('DOMContentLoaded', function() {
         100% {
             transform: scale(1);
         }
+    }
+
+    /* Payment Method Dialog Styles */
+    .payment-method-dialog {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .payment-method-dialog .dialog-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        animation: fadeIn 0.2s ease-out;
+    }
+
+    .payment-method-dialog .dialog-content {
+        position: relative;
+        background-color: white;
+        border-radius: 16px;
+        width: 95%;
+        max-width: 500px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        transform-origin: center;
+        animation: scaleIn 0.2s ease-out;
+    }
+
+    .payment-method-dialog .dialog-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 24px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .payment-method-dialog .dialog-header h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+        color: #1a1a1a;
+    }
+
+    .payment-method-dialog .dialog-close {
+        background: none;
+        border: none;
+        padding: 8px;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        cursor: pointer;
+        color: #666;
+        transition: all 0.2s ease;
+    }
+
+    .payment-method-dialog .dialog-close:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+        color: #333;
+    }
+
+    .payment-method-dialog .dialog-body {
+        padding: 20px;
+    }
+
+    .payment-methods {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .payment-method-option {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px;
+        background-color: white;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: left;
+    }
+
+    .payment-method-option:hover {
+        border-color: #8800FF;
+        box-shadow: 0 4px 12px rgba(136, 0, 255, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .payment-icon {
+        width: 48px;
+        height: 48px;
+        background-color: #f0f0f0;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #8800FF;
+    }
+
+    .payment-info {
+        flex: 1;
+    }
+
+    .payment-info h3 {
+        margin: 0 0 4px 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .payment-info p {
+        margin: 0;
+        font-size: 14px;
+        color: #666;
+    }
+
+    /* Checkout Buttons */
+    .get-order-button, .choose-payment-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: 14px 20px;
+        background-color: #8800FF;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 16px;
+    }
+
+    .get-order-button:hover, .choose-payment-button:hover {
+        background-color: #7700dd;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(136, 0, 255, 0.3);
+    }
+
+    .get-order-button:disabled, .choose-payment-button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
     }
 </style>
 
