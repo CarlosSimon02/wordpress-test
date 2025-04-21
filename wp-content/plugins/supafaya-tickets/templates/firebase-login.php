@@ -123,8 +123,7 @@
                 <p>Authenticating...</p>
             </div>
             
-            <!-- Error Message -->
-            <div id="firebase-error" class="login-auth-error" style="display: none;"></div>
+
             
             <!-- <div class="login-auth-footer">
                 <p>Don't have an account? <a href="#" class="login-auth-link" id="show-signup">Sign up</a></p>
@@ -150,31 +149,27 @@ jQuery(document).ready(function($) {
         $('.login-auth-loading-state').hide();
         
         if (user) {
-            $('.login-auth-logged-in').show();
-            $('.login-auth-logged-out').hide();
+            // Get return URL from URL parameters or cookie
+            let redirectUrl = '';
+            const urlParams = new URLSearchParams(window.location.search);
+            const returnUrl = urlParams.get('return_url');
             
-            const displayName = user.displayName || (user.email ? user.email.split('@')[0] : 'User');
-            $('#login-user-name').text(displayName);
-            
-            if (user.photoURL) {
-                $('#login-user-avatar-img')
-                    .attr('src', user.photoURL)
-                    .on('load', function() {
-                        $(this).show();
-                        $('#login-user-initials').hide();
-                    })
-                    .on('error', function() {
-                        $(this).hide();
-                        showUserInitials(user);
-                    });
-            } else {
-                $('#login-user-avatar-img').hide();
-                showUserInitials(user);
+            if (returnUrl && returnUrl.trim() !== '') {
+                redirectUrl = returnUrl;
+            } else if (document.cookie.indexOf('supafaya_checkout_redirect') !== -1) {
+                const match = document.cookie.match(new RegExp('(^| )supafaya_checkout_redirect=([^;]+)'));
+                if (match) {
+                    redirectUrl = decodeURIComponent(match[2]);
+                }
             }
             
-            if (!user.displayName && !user.photoURL) {
-                tryLoadUserFromCookie();
+            // If no return URL found, redirect to home page
+            if (!redirectUrl) {
+                redirectUrl = '<?php echo esc_url(home_url()); ?>';
             }
+            
+            // Redirect the user
+            window.location.href = redirectUrl;
         } else {
             $('.login-auth-logged-in').hide();
             $('.login-auth-logged-out').show();
