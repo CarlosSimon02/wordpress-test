@@ -114,7 +114,7 @@
 /* Two Column Layout */
 .pop-two-column {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: wrap-reverse;
     gap: 24px;
 }
 
@@ -205,30 +205,36 @@
 
 /* Payment Instructions Section */
 .payment-instructions {
-    margin-top: 20px;
-    padding-top: 16px;
+    margin-top: 24px;
+    padding-top: 20px;
     border-top: 1px solid #eaeaea;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    padding: 18px;
 }
 
 .payment-instructions h4 {
-    font-size: 16px;
-    margin: 0 0 12px 0;
+    font-size: 18px;
+    margin: 0 0 14px 0;
     color: #333;
+    font-weight: 700;
+    letter-spacing: 0.2px;
 }
 
 .payment-instructions p {
-    font-size: 14px;
+    font-size: 15px;
     color: #555;
-    margin-bottom: 12px;
-    line-height: 1.5;
+    margin-bottom: 14px;
+    line-height: 1.6;
 }
 
 .payment-methods {
     background-color: #f5f9ff;
-    border-radius: 6px;
-    padding: 12px;
-    margin: 12px 0;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
     font-size: 16px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 
 .payment-methods img {
@@ -237,32 +243,43 @@
     margin-left: auto;
     margin-right: auto;
     display: block;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.1));
 }
 
 .payment-method {
     display: flex;
     justify-content: space-between;
-    padding: 8px 0;
+    padding: 10px 0;
     border-bottom: 1px solid #e6eeff;
 }
 
 .payment-method:last-child {
     border-bottom: none;
+    padding-bottom: 4px;
 }
 
 .payment-method strong {
     color: #5271ff;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.payment-method span {
     font-weight: 600;
 }
 
 .payment-note {
-    font-size: 13px;
+    font-size: 14px;
     color: #666;
     font-style: italic;
     background-color: #f9f9f9;
-    padding: 10px;
-    border-radius: 6px;
-    border-left: 3px solid #5271ff;
+    padding: 14px;
+    border-radius: 8px;
+    border-left: 4px solid #5271ff;
+    margin-top: 16px;
+    font-weight: 500;
+    line-height: 1.5;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
 }
 
 /* Form Styles */
