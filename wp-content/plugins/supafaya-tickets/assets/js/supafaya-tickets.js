@@ -445,9 +445,7 @@
         });
         
         $(document).on('click', '.payment-method-dialog .dialog-close, .payment-method-dialog .dialog-overlay', function(e) {
-            if (e.target === this) {
-                $('.payment-method-dialog').fadeOut(300);
-            }
+            $('.payment-method-dialog').fadeOut(300);
         });
         
         $(document).on('click', '.payment-method-option.card-payment', function() {
