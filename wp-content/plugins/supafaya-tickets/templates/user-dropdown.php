@@ -23,7 +23,7 @@ $firebase_project_id = get_option('supafaya_firebase_project_id', '');
     
     <!-- User dropdown (shown when logged in) -->
     <div class="auth-logged-in" style="display: none;">
-        <div class="user-dropdown-toggle">
+        <div class="user-dropdown-toggle-two">
             <div class="user-dropdown-avatar">
                 <img id="user-avatar-img" src="" alt="User avatar" style="display: none;">
                 <span id="user-initials"></span>
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle dropdown toggle
     document.addEventListener('click', function(e) {
-        var toggleElement = e.target.closest('.user-dropdown-toggle');
+        var toggleElement = e.target.closest('.user-dropdown-toggle-two');
         if (toggleElement) {
             e.preventDefault();
             e.stopPropagation();
@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', function() {
     flex-direction: column;
 }
 
-.user-dropdown-toggle {
+.user-dropdown-toggle-two {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -264,7 +264,7 @@ document.addEventListener('DOMContentLoaded', function() {
     width: fit;
 }
 
-.user-dropdown-toggle:hover {
+.user-dropdown-toggle-two:hover {
     background-color: var(--supafaya-bg-hover);
 }
 
@@ -281,7 +281,7 @@ document.addEventListener('DOMContentLoaded', function() {
     transition: all var(--supafaya-transition);
 }
 
-.user-dropdown-toggle:hover .user-dropdown-avatar {
+.user-dropdown-toggle-two:hover .user-dropdown-avatar {
     transform: scale(1.05);
 }
 
