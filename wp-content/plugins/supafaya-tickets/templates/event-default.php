@@ -1,6 +1,64 @@
 <?php
+// Only check login if require_login is true (default)
+if (isset($require_login) && $require_login):
+
+// Check if user is logged in and redirect to login page if not
+$login_url = get_option('supafaya_login_page_url', '');
+
+// Try to find login page if URL is not set in options
+if (empty($login_url)) {
+    $login_pages = get_posts([
+        'post_type' => 'page',
+        'posts_per_page' => 1,
+        's' => '[supafaya_firebase_login]'
+    ]);
+    
+    if (!empty($login_pages)) {
+        $login_url = get_permalink($login_pages[0]->ID);
+    } else {
+        $login_url = home_url('/login/'); // Fallback to default login URL
+    }
+}
+
+// Check if the auth_check parameter should be bypassed (for development)
+$bypass_auth = isset($_GET['bypass_auth']) && $_GET['bypass_auth'] === '1';
+
+// Get the current URL for the return_url parameter
+$current_event_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
 ?>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initially hide event content until authentication is verified
+    document.querySelector('.supafaya-event-single').style.display = 'none';
+    
+    // Check if user is logged in via Firebase
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+        firebase.auth().onAuthStateChanged(function(user) {
+            // If not logged in and not bypassing auth, redirect to login page
+            if (!user && !<?php echo $bypass_auth ? 'true' : 'false'; ?>) {
+                // Append the return URL to redirect back to the event page after login
+                var returnUrl = encodeURIComponent('<?php echo esc_js($current_event_url); ?>');
+                window.location.href = '<?php echo esc_js($login_url); ?>' + 
+                    (<?php echo strpos($login_url, '?') !== false ? 'true' : 'false'; ?> ? '&' : '?') + 
+                    'return_url=' + returnUrl;
+            } else {
+                // User is logged in, show content
+                document.querySelector('.supafaya-event-single').style.display = 'block';
+            }
+        });
+    } else {
+        // If Firebase is not available, show error and content
+        console.error('Firebase authentication not available');
+        document.querySelector('.supafaya-event-single').style.display = 'block';
+    }
+});
+</script>
+
 <div class="supafaya-event-single">
+<?php else: ?>
+<div class="supafaya-event-single">
+<?php endif; ?>
     <div class="event-container">
         <!-- Left Column (Sticky) -->
         <div class="event-left-column">

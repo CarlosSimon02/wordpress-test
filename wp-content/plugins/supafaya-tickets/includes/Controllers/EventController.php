@@ -76,7 +76,8 @@ class EventController
   {
     $atts = shortcode_atts([
       'event_id' => '',
-      'template' => 'default'
+      'template' => 'default',
+      'require_login' => 'true'
     ], $atts);
 
     if (empty($atts['event_id']) && isset($_GET['event_id'])) {
@@ -110,6 +111,16 @@ class EventController
       $event['addons'] = $addons_response['data']['data'] ?? [];
     }
 
+    $require_login = filter_var($atts['require_login'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) !== false;
+    
+    $template_data = [
+      'event' => $event,
+      'require_login' => $require_login,
+      'atts' => $atts
+    ];
+    
+    extract($template_data);
+    
     ob_start();
     include SUPAFAYA_PLUGIN_DIR . 'templates/event-' . $atts['template'] . '.php';
     return ob_get_clean();

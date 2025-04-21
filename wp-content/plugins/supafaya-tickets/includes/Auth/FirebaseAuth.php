@@ -168,13 +168,17 @@ class FirebaseAuth {
     }
     
     /**
-     * Get redirect URL from session or referrer
+     * Get the URL to redirect after login
      */
     private function get_redirect_url() {
         $redirect = '';
         
-        // Check session storage via cookie first
-        if (isset($_COOKIE['supafaya_checkout_redirect'])) {
+        // First check for return_url parameter in the URL
+        if (isset($_GET['return_url'])) {
+            $redirect = esc_url_raw($_GET['return_url']);
+        }
+        // Then check session storage via cookie
+        else if (isset($_COOKIE['supafaya_checkout_redirect'])) {
             $redirect = esc_url_raw($_COOKIE['supafaya_checkout_redirect']);
             // Clear the cookie
             setcookie('supafaya_checkout_redirect', '', time() - 3600, '/');
