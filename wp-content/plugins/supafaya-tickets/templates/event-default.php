@@ -668,12 +668,17 @@ document.addEventListener('DOMContentLoaded', function() {
         font-weight: 600;
     }
 
+    .tab-button:focus {
+        background-color: rgba(0, 0, 0, 0.03) !important;
+    }
+
     .tab-button.active:after {
         transform: scaleX(1);
     }
 
     .tab-button:hover {
-        background-color: rgba(0, 0, 0, 0.03);
+        background-color: rgba(0, 0, 0, 0.03) !important;
+        color: black !important;
     }
 
     .tab-content {
@@ -787,7 +792,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     .qr-button:hover {
-        background-color: #3367d6;
+        background-color:rgb(149, 34, 250);
     }
 
     .qr-button svg {
@@ -994,6 +999,7 @@ document.addEventListener('DOMContentLoaded', function() {
         border-color: #8800FF;
         box-shadow: 0 4px 12px rgba(136, 0, 255, 0.1);
         transform: translateY(-2px);
+        background-color: white !important;
     }
 
     .payment-icon {
@@ -1054,6 +1060,17 @@ document.addEventListener('DOMContentLoaded', function() {
         transform: none;
         box-shadow: none;
     }
+
+    .ticket-actions button {
+        color: black !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    .ticket-actions input {
+        padding: 0 !important;
+    }
+
 </style>
 
 <!-- The JavaScript code has been moved to /assets/js/purchased-items.js -->

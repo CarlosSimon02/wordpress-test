@@ -452,14 +452,14 @@
   }
 
   .pagination-button:hover:not(:disabled) {
-    background-color: var(--primary-color);
-    color: white;
+    color: var(--primary-color) !important;
   }
 
-  .pagination-button:disabled {
+  .pagination-button:hover:disabled {
     opacity: 0.5;
     cursor: not-allowed;
     background-color: var(--bg-light);
+    color: var(--primary-color) !important;
   }
 
   /* Dialog Styles */
