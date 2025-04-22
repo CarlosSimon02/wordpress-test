@@ -449,10 +449,14 @@
     
     .form-column {
         order: 2;
+        flex: 1 1 100%;
+        width: 100%;
+        max-width: 100%;
     }
     
     .cart-column {
         order: 1;
+        width: 100%;
     }
     
     .form-actions {
@@ -461,6 +465,13 @@
     
     .form-field input,
     .form-field textarea {
-        font-size: 16px; /* Prevent zoom on mobile */
+        font-size: 16px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .form-field.file-upload input[type="file"] {
+        width: 100%;
+        box-sizing: border-box;
     }
 } 
