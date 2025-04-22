@@ -125,19 +125,12 @@
 
     function setupAjaxTokenInterceptor(user) {
         $.ajaxSetup({
-            beforeSend: function(xhr, settings) {
-                if (settings.url && (
-                    settings.url.includes('/wp-admin/admin-ajax.php') ||
-                    settings.url.includes('supafaya')
-                )) {
-                    user.getIdToken(true)
-                        .then(function(token) {
-                            xhr.setRequestHeader('X-Firebase-Token', token);
-                        })
-                        .catch(function(error) {
-                            // Silent fail
-                        });
-                }
+            beforeSend: function(xhr) {
+                user.getIdToken(true).then(function(token) {
+                    xhr.setRequestHeader('X-Firebase-Token', token);
+                }).catch(function(error) {
+                    console.error('Error getting Firebase token', error);
+                });
             }
         });
     }
